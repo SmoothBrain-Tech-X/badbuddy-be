@@ -5,6 +5,7 @@ import (
 	"badbuddy/internal/infrastructure/database"
 	"badbuddy/internal/infrastructure/server"
 	"badbuddy/internal/repositories/postgres"
+	"badbuddy/internal/usecase/session"
 	"badbuddy/internal/usecase/user"
 	"badbuddy/internal/usecase/venue"
 	"fmt"
@@ -52,6 +53,11 @@ func main() {
 	venueUseCase := venue.NewVenueUseCase(venueRepo, userRepo)
 	venueHandler := rest.NewVenueHandler(venueUseCase)
 	venueHandler.SetupVenueRoutes(app)
+
+	sessionRepo := postgres.NewSessionRepository(db)
+	sessionUseCase := session.NewSessionUseCase(sessionRepo, venueRepo)
+	sessionHandler := rest.NewSessionHandler(sessionUseCase)
+	sessionHandler.SetupSessionRoutes(app)
 
 	port := getEnv("PORT", "8004")
 	if err := app.Listen(":" + port); err != nil {
