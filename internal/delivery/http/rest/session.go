@@ -1,10 +1,12 @@
 package rest
 
 import (
-	"badbuddy/internal/delivery/http/middleware"
-	"badbuddy/internal/usecase/session"
+	"errors"
 
 	"badbuddy/internal/delivery/dto/requests"
+	"badbuddy/internal/delivery/dto/responses"
+	"badbuddy/internal/delivery/http/middleware"
+	"badbuddy/internal/usecase/session"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -19,6 +21,7 @@ func NewSessionHandler(sessionUseCase session.UseCase) *SessionHandler {
 		sessionUseCase: sessionUseCase,
 	}
 }
+
 func (h *SessionHandler) SetupSessionRoutes(app *fiber.App) {
 	sessions := app.Group("/api/sessions")
 
@@ -32,13 +35,17 @@ func (h *SessionHandler) SetupSessionRoutes(app *fiber.App) {
 	sessions.Put("/:id", h.UpdateSession)
 	sessions.Post("/:id/join", h.JoinSession)
 	sessions.Post("/:id/leave", h.LeaveSession)
+	sessions.Post("/:id/cancel", h.CancelSession)
 	sessions.Get("/user/me", h.GetUserSessions)
 }
+
 func (h *SessionHandler) CreateSession(c *fiber.Ctx) error {
 	var req requests.CreateSessionRequest
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid request body",
+		return c.Status(fiber.StatusBadRequest).JSON(responses.ErrorResponse{
+			Error:       "Invalid request body",
+			Code:        "INVALID_REQUEST",
+			Description: err.Error(),
 		})
 	}
 
@@ -46,120 +53,170 @@ func (h *SessionHandler) CreateSession(c *fiber.Ctx) error {
 
 	session, err := h.sessionUseCase.CreateSession(c.Context(), hostID, req)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		return h.handleError(c, err)
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(session)
+	return c.Status(fiber.StatusCreated).JSON(responses.SuccessResponse{
+		Message: "Session created successfully",
+		Data:    session,
+	})
 }
 
 func (h *SessionHandler) GetSession(c *fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid session ID",
+		return c.Status(fiber.StatusBadRequest).JSON(responses.ErrorResponse{
+			Error:       "Invalid session ID",
+			Code:        "INVALID_ID",
+			Description: "The provided session ID is not in a valid format",
 		})
 	}
 
 	session, err := h.sessionUseCase.GetSession(c.Context(), id)
 	if err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		return h.handleError(c, err)
 	}
 
-	return c.JSON(session)
+	return c.JSON(responses.SuccessResponse{
+		Data: session,
+	})
 }
 
 func (h *SessionHandler) ListSessions(c *fiber.Ctx) error {
-	filters := map[string]interface{}{
-		"date":         c.Query("date"),
-		"location":     c.Query("location"),
-		"player_level": c.Query("player_level"),
-		"status":       c.Query("status"),
+	// Parse and validate filters
+	filters := make(map[string]interface{})
+
+	if date := c.Query("date"); date != "" {
+		filters["date"] = date
+	}
+	if location := c.Query("location"); location != "" {
+		filters["location"] = location
+	}
+	if playerLevel := c.Query("player_level"); playerLevel != "" {
+		filters["player_level"] = playerLevel
+	}
+	if status := c.Query("status"); status != "" {
+		filters["status"] = status
 	}
 
+	// Parse pagination params with defaults
 	limit := c.QueryInt("limit", 10)
+	if limit <= 0 || limit > 100 {
+		limit = 10
+	}
+
 	offset := c.QueryInt("offset", 0)
+	if offset < 0 {
+		offset = 0
+	}
 
 	sessions, err := h.sessionUseCase.ListSessions(c.Context(), filters, limit, offset)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		return h.handleError(c, err)
 	}
 
 	return c.JSON(sessions)
 }
 
+func (h *SessionHandler) UpdateSession(c *fiber.Ctx) error {
+	sessionID, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(responses.ErrorResponse{
+			Error:       "Invalid session ID",
+			Code:        "INVALID_ID",
+			Description: "The provided session ID is not in a valid format",
+		})
+	}
+
+	var req requests.UpdateSessionRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(responses.ErrorResponse{
+			Error:       "Invalid request body",
+			Code:        "INVALID_REQUEST",
+			Description: err.Error(),
+		})
+	}
+
+	hostID := c.Locals("userID").(uuid.UUID)
+
+	if err := h.sessionUseCase.UpdateSession(c.Context(), sessionID, hostID, req); err != nil {
+		return h.handleError(c, err)
+	}
+
+	return c.JSON(responses.SuccessResponse{
+		Message: "Session updated successfully",
+	})
+}
+
 func (h *SessionHandler) JoinSession(c *fiber.Ctx) error {
 	sessionID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid session ID",
+		return c.Status(fiber.StatusBadRequest).JSON(responses.ErrorResponse{
+			Error:       "Invalid session ID",
+			Code:        "INVALID_ID",
+			Description: "The provided session ID is not in a valid format",
+		})
+	}
+
+	var req requests.JoinSessionRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(responses.ErrorResponse{
+			Error:       "Invalid request body",
+			Code:        "INVALID_REQUEST",
+			Description: err.Error(),
 		})
 	}
 
 	userID := c.Locals("userID").(uuid.UUID)
 
-	if err := h.sessionUseCase.JoinSession(c.Context(), sessionID, userID); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+	if err := h.sessionUseCase.JoinSession(c.Context(), sessionID, userID, req); err != nil {
+		return h.handleError(c, err)
 	}
 
-	return c.JSON(fiber.Map{
-		"message": "Successfully joined session",
+	return c.JSON(responses.SuccessResponse{
+		Message: "Successfully joined session",
 	})
 }
-
-// internal/delivery/http/handlers/session.go (continued)
 
 func (h *SessionHandler) LeaveSession(c *fiber.Ctx) error {
 	sessionID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid session ID",
+		return c.Status(fiber.StatusBadRequest).JSON(responses.ErrorResponse{
+			Error:       "Invalid session ID",
+			Code:        "INVALID_ID",
+			Description: "The provided session ID is not in a valid format",
 		})
 	}
 
 	userID := c.Locals("userID").(uuid.UUID)
 
 	if err := h.sessionUseCase.LeaveSession(c.Context(), sessionID, userID); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		return h.handleError(c, err)
 	}
 
-	return c.JSON(fiber.Map{
-		"message": "Successfully left session",
+	return c.JSON(responses.SuccessResponse{
+		Message: "Successfully left session",
 	})
 }
 
-func (h *SessionHandler) UpdateSession(c *fiber.Ctx) error {
+func (h *SessionHandler) CancelSession(c *fiber.Ctx) error {
 	sessionID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid session ID",
+		return c.Status(fiber.StatusBadRequest).JSON(responses.ErrorResponse{
+			Error:       "Invalid session ID",
+			Code:        "INVALID_ID",
+			Description: "The provided session ID is not in a valid format",
 		})
 	}
 
-	var req requests.UpdateSessionRequest
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid request body",
-		})
+	hostID := c.Locals("userID").(uuid.UUID)
+
+	if err := h.sessionUseCase.CancelSession(c.Context(), sessionID, hostID); err != nil {
+		return h.handleError(c, err)
 	}
 
-	if err := h.sessionUseCase.UpdateSession(c.Context(), sessionID, req); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": err.Error(),
-		})
-	}
-
-	return c.JSON(fiber.Map{
-		"message": "Session updated successfully",
+	return c.JSON(responses.SuccessResponse{
+		Message: "Session cancelled successfully",
 	})
 }
 
@@ -169,12 +226,47 @@ func (h *SessionHandler) GetUserSessions(c *fiber.Ctx) error {
 
 	sessions, err := h.sessionUseCase.GetUserSessions(c.Context(), userID, includeHistory)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		return h.handleError(c, err)
 	}
 
-	return c.JSON(fiber.Map{
-		"sessions": sessions,
+	return c.JSON(responses.SuccessResponse{
+		Data: sessions,
 	})
+}
+
+// handleError centralizes error handling and status code selection
+func (h *SessionHandler) handleError(c *fiber.Ctx, err error) error {
+	var status int
+	var errorResponse responses.ErrorResponse
+
+	// Add specific error type checks here if needed
+	switch {
+	case errors.Is(err, session.ErrSessionNotFound):
+		status = fiber.StatusNotFound
+		errorResponse = responses.ErrorResponse{
+			Error: "Session not found",
+			Code:  "SESSION_NOT_FOUND",
+		}
+	case errors.Is(err, session.ErrUnauthorized):
+		status = fiber.StatusUnauthorized
+		errorResponse = responses.ErrorResponse{
+			Error: "Unauthorized",
+			Code:  "UNAUTHORIZED",
+		}
+	case errors.Is(err, session.ErrValidation):
+		status = fiber.StatusBadRequest
+		errorResponse = responses.ErrorResponse{
+			Error: "Validation error",
+			Code:  "VALIDATION_ERROR",
+		}
+	default:
+		status = fiber.StatusInternalServerError
+		errorResponse = responses.ErrorResponse{
+			Error: "Internal server error",
+			Code:  "INTERNAL_ERROR",
+		}
+	}
+
+	errorResponse.Description = err.Error()
+	return c.Status(status).JSON(errorResponse)
 }

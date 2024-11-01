@@ -25,6 +25,7 @@ func (h *VenueHandler) SetupVenueRoutes(app *fiber.App) {
 
 	// Public routes
 	venueGroup.Get("/", h.ListVenues)
+	venueGroup.Get("/search", h.SearchVenues)
 	venueGroup.Get("/:id", h.GetVenue)
 	venueGroup.Get("/:id/reviews", h.GetReviews)
 

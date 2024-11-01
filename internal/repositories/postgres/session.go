@@ -22,43 +22,71 @@ func NewSessionRepository(db *sqlx.DB) interfaces.SessionRepository {
 
 func (r *sessionRepository) Create(ctx context.Context, session *models.Session) error {
 	query := `
-		INSERT INTO sessions (
-			id, host_id, venue_id, court_id, title, description,
+		INSERT INTO play_sessions (
+			id, host_id, venue_id, title, description,
 			session_date, start_time, end_time, player_level,
-			min_players, max_players, cost_per_person, status,
+			max_participants, cost_per_person, allow_cancellation,
+			cancellation_deadline_hours, status,
 			created_at, updated_at
 		) VALUES (
-			:id, :host_id, :venue_id, :court_id, :title, :description,
+			:id, :host_id, :venue_id, :title, :description,
 			:session_date, :start_time, :end_time, :player_level,
-			:min_players, :max_players, :cost_per_person, :status,
+			:max_participants, :cost_per_person, :allow_cancellation,
+			:cancellation_deadline_hours, :status,
 			:created_at, :updated_at
 		)`
 
 	_, err := r.db.NamedExecContext(ctx, query, session)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// If there are selected courts, insert them into session_courts
+	if len(session.CourtIDs) > 0 {
+		for _, courtID := range session.CourtIDs {
+			_, err = r.db.ExecContext(ctx, `
+				INSERT INTO session_courts (id, session_id, court_id, created_at)
+				VALUES ($1, $2, $3, NOW())
+			`, uuid.New(), session.ID, courtID)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func (r *sessionRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.SessionDetail, error) {
 	query := `
 		SELECT 
-			s.*,
+			ps.*,
 			v.name as venue_name,
 			v.location as venue_location,
-			c.name as court_name,
 			u.first_name || ' ' || u.last_name as host_name,
 			u.play_level as host_level,
-			COUNT(sp.id) FILTER (WHERE sp.status = 'joined') as current_players,
-			COUNT(sp.id) FILTER (WHERE sp.status = 'waitlist') as waitlist_count
-		FROM sessions s
-		JOIN venues v ON v.id = s.venue_id
-		JOIN courts c ON c.id = s.court_id
-		JOIN users u ON u.id = s.host_id
-		LEFT JOIN session_participants sp ON sp.session_id = s.id
-		WHERE s.id = $1 AND s.deleted_at IS NULL
-		GROUP BY s.id, v.name, v.location, c.name, u.first_name, u.last_name, u.play_level`
+			COUNT(sp.id) FILTER (WHERE sp.status = 'confirmed') as confirmed_players
+		FROM play_sessions ps
+		JOIN venues v ON v.id = ps.venue_id
+		JOIN users u ON u.id = ps.host_id
+		LEFT JOIN session_participants sp ON sp.session_id = ps.id
+		WHERE ps.id = $1
+		GROUP BY ps.id, v.name, v.location, u.first_name, u.last_name, u.play_level`
 
 	session := &models.SessionDetail{}
 	err := r.db.GetContext(ctx, session, query, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get courts for this session
+	courtsQuery := `
+		SELECT c.*
+		FROM courts c
+		JOIN session_courts sc ON sc.court_id = c.id
+		WHERE sc.session_id = $1`
+
+	err = r.db.SelectContext(ctx, &session.Courts, courtsQuery, id)
 	if err != nil {
 		return nil, err
 	}
@@ -76,24 +104,36 @@ func (r *sessionRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.
 		return nil, err
 	}
 
+	// Get session rules
+	rulesQuery := `
+		SELECT *
+		FROM session_rules
+		WHERE session_id = $1`
+
+	err = r.db.SelectContext(ctx, &session.Rules, rulesQuery, id)
+	if err != nil {
+		return nil, err
+	}
+
 	return session, nil
 }
 
 func (r *sessionRepository) Update(ctx context.Context, session *models.Session) error {
 	query := `
-		UPDATE sessions SET
+		UPDATE play_sessions SET
 			title = :title,
 			description = :description,
 			session_date = :session_date,
 			start_time = :start_time,
 			end_time = :end_time,
 			player_level = :player_level,
-			min_players = :min_players,
-			max_players = :max_players,
+			max_participants = :max_participants,
 			cost_per_person = :cost_per_person,
+			allow_cancellation = :allow_cancellation,
+			cancellation_deadline_hours = :cancellation_deadline_hours,
 			status = :status,
 			updated_at = :updated_at
-		WHERE id = :id AND deleted_at IS NULL`
+		WHERE id = :id`
 
 	result, err := r.db.NamedExecContext(ctx, query, session)
 	if err != nil {
@@ -109,18 +149,38 @@ func (r *sessionRepository) Update(ctx context.Context, session *models.Session)
 		return fmt.Errorf("session not found")
 	}
 
+	// Update session courts if provided
+	if len(session.CourtIDs) > 0 {
+		// Delete existing courts
+		_, err = r.db.ExecContext(ctx, `DELETE FROM session_courts WHERE session_id = $1`, session.ID)
+		if err != nil {
+			return err
+		}
+
+		// Insert new courts
+		for _, courtID := range session.CourtIDs {
+			_, err = r.db.ExecContext(ctx, `
+				INSERT INTO session_courts (id, session_id, court_id, created_at)
+				VALUES ($1, $2, $3, NOW())
+			`, uuid.New(), session.ID, courtID)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
 func (r *sessionRepository) List(ctx context.Context, filters map[string]interface{}, limit, offset int) ([]models.SessionDetail, error) {
-	conditions := []string{"s.deleted_at IS NULL"}
+	conditions := []string{"1=1"}
 	args := []interface{}{}
 	argIndex := 1
 
 	for key, value := range filters {
 		switch key {
 		case "date":
-			conditions = append(conditions, fmt.Sprintf("s.session_date = $%d", argIndex))
+			conditions = append(conditions, fmt.Sprintf("ps.session_date = $%d", argIndex))
 			args = append(args, value)
 			argIndex++
 		case "location":
@@ -128,11 +188,11 @@ func (r *sessionRepository) List(ctx context.Context, filters map[string]interfa
 			args = append(args, value)
 			argIndex++
 		case "player_level":
-			conditions = append(conditions, fmt.Sprintf("s.player_level = $%d", argIndex))
+			conditions = append(conditions, fmt.Sprintf("ps.player_level = $%d", argIndex))
 			args = append(args, value)
 			argIndex++
 		case "status":
-			conditions = append(conditions, fmt.Sprintf("s.status = $%d", argIndex))
+			conditions = append(conditions, fmt.Sprintf("ps.status = $%d", argIndex))
 			args = append(args, value)
 			argIndex++
 		}
@@ -142,22 +202,19 @@ func (r *sessionRepository) List(ctx context.Context, filters map[string]interfa
 
 	query := fmt.Sprintf(`
 		SELECT 
-			s.*,
+			ps.*,
 			v.name as venue_name,
 			v.location as venue_location,
-			c.name as court_name,
 			u.first_name || ' ' || u.last_name as host_name,
 			u.play_level as host_level,
-			COUNT(sp.id) FILTER (WHERE sp.status = 'joined') as current_players,
-			COUNT(sp.id) FILTER (WHERE sp.status = 'waitlist') as waitlist_count
-		FROM sessions s
-		JOIN venues v ON v.id = s.venue_id
-		JOIN courts c ON c.id = s.court_id
-		JOIN users u ON u.id = s.host_id
-		LEFT JOIN session_participants sp ON sp.session_id = s.id
+			COUNT(sp.id) FILTER (WHERE sp.status = 'confirmed') as confirmed_players
+		FROM play_sessions ps
+		JOIN venues v ON v.id = ps.venue_id
+		JOIN users u ON u.id = ps.host_id
+		LEFT JOIN session_participants sp ON sp.session_id = ps.id
 		WHERE %s
-		GROUP BY s.id, v.name, v.location, c.name, u.first_name, u.last_name, u.play_level
-		ORDER BY s.session_date ASC, s.start_time ASC
+		GROUP BY ps.id, v.name, v.location, u.first_name, u.last_name, u.play_level
+		ORDER BY ps.session_date ASC, ps.start_time ASC
 		LIMIT $%d OFFSET $%d`,
 		strings.Join(conditions, " AND "),
 		argIndex,
@@ -207,9 +264,7 @@ func (r *sessionRepository) UpdateParticipantStatus(ctx context.Context, session
 
 func (r *sessionRepository) GetParticipants(ctx context.Context, sessionID uuid.UUID) ([]models.SessionParticipant, error) {
 	query := `
-		SELECT 
-			sp.*,
-			u.first_name || ' ' || u.last_name as user_name
+		SELECT sp.*, u.first_name || ' ' || u.last_name as user_name
 		FROM session_participants sp
 		JOIN users u ON u.id = sp.user_id
 		WHERE sp.session_id = $1
@@ -222,33 +277,29 @@ func (r *sessionRepository) GetParticipants(ctx context.Context, sessionID uuid.
 
 func (r *sessionRepository) GetUserSessions(ctx context.Context, userID uuid.UUID, includeHistory bool) ([]models.SessionDetail, error) {
 	conditions := []string{
-		"(s.host_id = $1 OR sp.user_id = $1)",
-		"s.deleted_at IS NULL",
+		"(ps.host_id = $1 OR sp.user_id = $1)",
 	}
 
 	if !includeHistory {
-		conditions = append(conditions, "s.session_date >= CURRENT_DATE")
+		conditions = append(conditions, "ps.session_date >= CURRENT_DATE")
 	}
 
 	query := fmt.Sprintf(`
 		SELECT DISTINCT
-			s.*,
+			ps.*,
 			v.name as venue_name,
 			v.location as venue_location,
-			c.name as court_name,
 			u.first_name || ' ' || u.last_name as host_name,
 			u.play_level as host_level,
-			COUNT(sp2.id) FILTER (WHERE sp2.status = 'joined') as current_players,
-			COUNT(sp2.id) FILTER (WHERE sp2.status = 'waitlist') as waitlist_count
-		FROM sessions s
-		JOIN venues v ON v.id = s.venue_id
-		JOIN courts c ON c.id = s.court_id
-		JOIN users u ON u.id = s.host_id
-		LEFT JOIN session_participants sp ON sp.session_id = s.id
-		LEFT JOIN session_participants sp2 ON sp2.session_id = s.id
+			COUNT(sp2.id) FILTER (WHERE sp2.status = 'confirmed') as confirmed_players
+		FROM play_sessions ps
+		JOIN venues v ON v.id = ps.venue_id
+		JOIN users u ON u.id = ps.host_id
+		LEFT JOIN session_participants sp ON sp.session_id = ps.id
+		LEFT JOIN session_participants sp2 ON sp2.session_id = ps.id
 		WHERE %s
-		GROUP BY s.id, v.name, v.location, c.name, u.first_name, u.last_name, u.play_level
-		ORDER BY s.session_date DESC, s.start_time DESC`,
+		GROUP BY ps.id, v.name, v.location, u.first_name, u.last_name, u.play_level
+		ORDER BY ps.session_date DESC, ps.start_time DESC`,
 		strings.Join(conditions, " AND "),
 	)
 

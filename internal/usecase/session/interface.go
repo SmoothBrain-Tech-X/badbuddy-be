@@ -11,10 +11,11 @@ import (
 
 type UseCase interface {
 	CreateSession(ctx context.Context, hostID uuid.UUID, req requests.CreateSessionRequest) (*responses.SessionResponse, error)
+	UpdateSession(ctx context.Context, sessionID uuid.UUID, hostID uuid.UUID, req requests.UpdateSessionRequest) error
 	GetSession(ctx context.Context, id uuid.UUID) (*responses.SessionResponse, error)
-	UpdateSession(ctx context.Context, id uuid.UUID, req requests.UpdateSessionRequest) error
 	ListSessions(ctx context.Context, filters map[string]interface{}, limit, offset int) (*responses.SessionListResponse, error)
-	JoinSession(ctx context.Context, sessionID, userID uuid.UUID) error
+	JoinSession(ctx context.Context, sessionID, userID uuid.UUID, req requests.JoinSessionRequest) error
 	LeaveSession(ctx context.Context, sessionID, userID uuid.UUID) error
+	CancelSession(ctx context.Context, sessionID, hostID uuid.UUID) error
 	GetUserSessions(ctx context.Context, userID uuid.UUID, includeHistory bool) ([]responses.SessionResponse, error)
 }
