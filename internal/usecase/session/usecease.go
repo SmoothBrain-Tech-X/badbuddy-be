@@ -62,8 +62,8 @@ func (uc *useCase) CreateSession(ctx context.Context, hostID uuid.UUID, req requ
 	}
 
 	// Validate session time including venue operating hours
-	venueOpenTime, _ := time.Parse("15:04", venue.OpenTime)
-	venueCloseTime, _ := time.Parse("15:04", venue.CloseTime)
+	venueOpenTime, _ := time.Parse("15:04", venue.OpenTime.Format("15:04"))
+	venueCloseTime, _ := time.Parse("15:04", venue.CloseTime.Format("15:04"))
 	if err := uc.validateSessionTime(sessionDate, startTime, endTime, venueOpenTime, venueCloseTime); err != nil {
 		return nil, err
 	}

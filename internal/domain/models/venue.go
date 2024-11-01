@@ -28,8 +28,8 @@ type Venue struct {
 	Location      string      `db:"location"`
 	Phone         string      `db:"phone"`
 	Email         string      `db:"email"`
-	OpenTime      string      `db:"open_time"`
-	CloseTime     string      `db:"close_time"`
+	OpenTime      time.Time   `db:"open_time"`
+	CloseTime     time.Time   `db:"close_time"`
 	ImageURLs     string      `db:"image_urls"`
 	Status        VenueStatus `db:"status"`
 	Rating        float64     `db:"rating"`

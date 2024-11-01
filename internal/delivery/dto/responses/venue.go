@@ -1,5 +1,7 @@
 package responses
 
+import "time"
+
 type CourtResponse struct {
 	ID           string  `json:"id"`
 	Name         string  `json:"name"`
@@ -16,8 +18,8 @@ type VenueResponse struct {
 	Location     string          `json:"location"`
 	Phone        string          `json:"phone"`
 	Email        string          `json:"email"`
-	OpenTime     string          `json:"open_time"`
-	CloseTime    string          `json:"close_time"`
+	OpenTime     time.Time       `json:"open_time"`
+	CloseTime    time.Time       `json:"close_time"`
 	ImageURLs    string          `json:"image_urls"`
 	Status       string          `json:"status"`
 	Rating       float64         `json:"rating"`

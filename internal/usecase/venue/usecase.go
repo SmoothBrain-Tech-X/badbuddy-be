@@ -27,15 +27,14 @@ func NewVenueUseCase(venueRepo interfaces.VenueRepository, userRepo interfaces.U
 
 func (uc *useCase) CreateVenue(ctx context.Context, ownerID uuid.UUID, req requests.CreateVenueRequest) (*responses.VenueResponse, error) {
 	venue := &models.Venue{
-		ID:          uuid.New(),
+		OpenTime:    req.OpenTime,
+		CloseTime:   req.CloseTime,
 		Name:        req.Name,
 		Description: req.Description,
 		Address:     req.Address,
 		Location:    req.Location,
 		Phone:       req.Phone,
 		Email:       req.Email,
-		OpenTime:    req.OpenTime,
-		CloseTime:   req.CloseTime,
 		ImageURLs:   req.ImageURLs,
 		Status:      models.VenueStatusActive,
 		OwnerID:     ownerID,
@@ -124,11 +123,19 @@ func (uc *useCase) UpdateVenue(ctx context.Context, id uuid.UUID, req requests.U
 	if req.Email != "" {
 		venue.Email = req.Email
 	}
-	if req.OpenTime != "" {
-		venue.OpenTime = req.OpenTime
+	if !req.OpenTime.IsZero() {
+		openTime, err := time.Parse(time.RFC3339, req.OpenTime.Format(time.RFC3339))
+		if err != nil {
+			return fmt.Errorf("invalid open time format: %w", err)
+		}
+		venue.OpenTime = openTime
 	}
-	if req.CloseTime != "" {
-		venue.CloseTime = req.CloseTime
+	if !req.CloseTime.IsZero() {
+		closeTime, err := time.Parse(time.RFC3339, req.CloseTime.Format(time.RFC3339))
+		if err != nil {
+			return fmt.Errorf("invalid close time format: %w", err)
+		}
+		venue.CloseTime = closeTime
 	}
 	if req.ImageURLs != "" {
 		venue.ImageURLs = req.ImageURLs

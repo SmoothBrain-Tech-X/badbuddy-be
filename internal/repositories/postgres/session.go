@@ -239,13 +239,19 @@ func (r *sessionRepository) AddParticipant(ctx context.Context, participant *mod
 }
 
 func (r *sessionRepository) UpdateParticipantStatus(ctx context.Context, sessionID, userID uuid.UUID, status models.ParticipantStatus) error {
+
 	query := `
 		UPDATE session_participants SET
-			status = $1,
-			cancelled_at = CASE WHEN $1 = 'cancelled' THEN NOW() ELSE cancelled_at END
-		WHERE session_id = $2 AND user_id = $3`
+			status = :status,
+			joined_at = CASE WHEN :status = 'confirmed' THEN NOW() ELSE joined_at END,
+			cancelled_at = CASE WHEN :status = 'cancelled' THEN NOW() ELSE cancelled_at END
+		WHERE session_id = :session_id AND user_id = :user_id`
 
-	result, err := r.db.ExecContext(ctx, query, status, sessionID, userID)
+	result, err := r.db.NamedExecContext(ctx, query, map[string]interface{}{
+		"status":     status,
+		"session_id": sessionID,
+		"user_id":    userID,
+	})
 	if err != nil {
 		return err
 	}
@@ -260,6 +266,7 @@ func (r *sessionRepository) UpdateParticipantStatus(ctx context.Context, session
 	}
 
 	return nil
+
 }
 
 func (r *sessionRepository) GetParticipants(ctx context.Context, sessionID uuid.UUID) ([]models.SessionParticipant, error) {
