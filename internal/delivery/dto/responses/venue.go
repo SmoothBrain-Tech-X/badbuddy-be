@@ -27,6 +27,11 @@ type VenueResponse struct {
 	Courts       []CourtResponse `json:"courts"`
 }
 
+type VenueResponseDTO struct {
+	Venues []VenueResponse `json:"venues"`
+	Total  int             `json:"total"`
+}
+
 type ReviewResponse struct {
 	ID        string           `json:"id"`
 	Rating    int              `json:"rating"`

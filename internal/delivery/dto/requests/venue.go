@@ -18,7 +18,6 @@ type UpdateVenueRequest struct {
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
 	Address     string    `json:"address"`
-	Location    string    `json:"location"`
 	Phone       string    `json:"phone"`
 	Email       string    `json:"email"`
 	OpenTime    time.Time `json:"open_time"`

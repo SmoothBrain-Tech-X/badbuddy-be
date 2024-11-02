@@ -13,6 +13,7 @@ type VenueRepository interface {
 	Update(ctx context.Context, venue *models.Venue) error
 	Delete(ctx context.Context, id uuid.UUID) error
 	List(ctx context.Context, location string, limit, offset int) ([]models.Venue, error)
+	CountVenues(ctx context.Context) (int, error)
 	Search(ctx context.Context, query string, limit, offset int) ([]models.Venue, error)
 	AddCourt(ctx context.Context, court *models.Court) error
 	UpdateCourt(ctx context.Context, court *models.Court) error

@@ -114,9 +114,7 @@ func (uc *useCase) UpdateVenue(ctx context.Context, id uuid.UUID, req requests.U
 	if req.Address != "" {
 		venue.Address = req.Address
 	}
-	if req.Location != "" {
-		venue.Location = req.Location
-	}
+
 	if req.Phone != "" {
 		venue.Phone = req.Phone
 	}
@@ -181,10 +179,10 @@ func (uc *useCase) ListVenues(ctx context.Context, location string, limit, offse
 	return venueResponses, nil
 }
 
-func (uc *useCase) SearchVenues(ctx context.Context, query string, limit, offset int) ([]responses.VenueResponse, error) {
+func (uc *useCase) SearchVenues(ctx context.Context, query string, limit, offset int) (responses.VenueResponseDTO, error) {
 	venues, err := uc.venueRepo.Search(ctx, query, limit, offset)
 	if err != nil {
-		return nil, fmt.Errorf("failed to search venues: %w", err)
+		return responses.VenueResponseDTO{}, fmt.Errorf("failed to search venues: %w", err)
 	}
 
 	venueResponses := make([]responses.VenueResponse, len(venues))
@@ -206,7 +204,12 @@ func (uc *useCase) SearchVenues(ctx context.Context, query string, limit, offset
 		}
 	}
 
-	return venueResponses, nil
+	total, err := uc.venueRepo.CountVenues(ctx)
+
+	return responses.VenueResponseDTO{
+		Venues: venueResponses,
+		Total:  total,
+	}, nil
 }
 
 func (uc *useCase) AddCourt(ctx context.Context, venueID uuid.UUID, req requests.CreateCourtRequest) (*responses.CourtResponse, error) {

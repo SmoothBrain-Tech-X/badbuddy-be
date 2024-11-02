@@ -19,7 +19,6 @@ func NewVenueHandler(venueUseCase venue.UseCase) *VenueHandler {
 	}
 }
 
-// internal/delivery/http/routes/venue.go
 func (h *VenueHandler) SetupVenueRoutes(app *fiber.App) {
 	venueGroup := app.Group("/api/venues")
 
@@ -136,9 +135,7 @@ func (h *VenueHandler) SearchVenues(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.JSON(fiber.Map{
-		"venues": venues,
-	})
+	return c.JSON(venues)
 }
 
 func (h *VenueHandler) AddCourt(c *fiber.Ctx) error {

@@ -1,6 +1,5 @@
 package requests
 
-// CreateCourtRequest represents the request to create a new court
 type CreateCourtRequest struct {
 	VenueID      string  `json:"venue_id" validate:"required,uuid"`
 	Name         string  `json:"name" validate:"required,min=2,max=100"`
@@ -8,7 +7,6 @@ type CreateCourtRequest struct {
 	PricePerHour float64 `json:"price_per_hour" validate:"required,gt=0"`
 }
 
-// UpdateCourtRequest represents the request to update an existing court
 type UpdateCourtRequest struct {
 	CourtID      string  `json:"court_id"`
 	Name         string  `json:"name" validate:"omitempty,min=2,max=100"`
@@ -17,12 +15,10 @@ type UpdateCourtRequest struct {
 	Status       string  `json:"status" validate:"omitempty,oneof=available occupied maintenance"`
 }
 
-// UpdateCourtStatusRequest represents the request to update court status
 type UpdateCourtStatusRequest struct {
 	Status string `json:"status" validate:"required,oneof=available occupied maintenance"`
 }
 
-// ListCourtsRequest represents the request to list courts with filters
 type ListCourtsRequest struct {
 	VenueID  string  `json:"venue_id" validate:"omitempty,uuid"`
 	Status   string  `json:"status" validate:"omitempty,oneof=available occupied maintenance"`
@@ -33,7 +29,6 @@ type ListCourtsRequest struct {
 	Offset   int     `json:"offset" validate:"omitempty,min=0"`
 }
 
-// CheckCourtAvailabilityRequest represents the request to check court availability
 type CheckCourtAvailabilityRequest struct {
 	CourtID   string `json:"court_id" validate:"required,uuid"`
 	Date      string `json:"date" validate:"required,datetime=2006-01-02"`

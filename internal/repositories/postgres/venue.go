@@ -142,6 +142,20 @@ func (r *venueRepository) List(ctx context.Context, location string, limit, offs
 	return venues, nil
 }
 
+func (r *venueRepository) CountVenues(ctx context.Context) (int, error) {
+	query := `
+		SELECT COUNT(*) FROM venues 
+		WHERE deleted_at IS NULL
+`
+	var count int
+	err := r.db.GetContext(ctx, &count, query)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count venues: %w", err)
+	}
+
+	return count, nil
+}
+
 func (r *venueRepository) Search(ctx context.Context, query string, limit, offset int) ([]models.Venue, error) {
 	searchQuery := `
 		SELECT * FROM venues 
