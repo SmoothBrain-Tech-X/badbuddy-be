@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gofiber/fiber"
 	"github.com/joho/godotenv"
 )
 
@@ -58,6 +59,15 @@ func main() {
 	sessionUseCase := session.NewSessionUseCase(sessionRepo, venueRepo)
 	sessionHandler := rest.NewSessionHandler(sessionUseCase)
 	sessionHandler.SetupSessionRoutes(app)
+
+	//add heatlh check and ready check
+
+	app.Get("*", func(c *fiber.Ctx) error {
+		return c.SendString("Hello, World 👋!")
+	})
+	app.Get("/health", func(c *fiber.Ctx) error {
+		return c.SendString("OK")
+	})
 
 	port := getEnv("PORT", "8004")
 	if err := app.Listen(":" + port); err != nil {

@@ -27,7 +27,7 @@ func (h *UserHandler) SetupUserRoutes(app *fiber.App) {
 	// Protected routes
 	userGroup.Use(middleware.AuthRequired())
 	userGroup.Get("/profile", h.GetProfile)
-	userGroup.Put("/:id/profile", h.UpdateProfile)
+	userGroup.Put("/profile", h.UpdateProfile)
 	userGroup.Get("/search", h.SearchUsers)
 }
 
@@ -87,10 +87,10 @@ func (h *UserHandler) GetProfile(c *fiber.Ctx) error {
 }
 
 func (h *UserHandler) UpdateProfile(c *fiber.Ctx) error {
-	userID, err := uuid.Parse(c.Params("id"))
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid user ID",
+	userID := c.Locals("userID").(uuid.UUID)
+	if userID == uuid.Nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "unauthorized",
 		})
 	}
 

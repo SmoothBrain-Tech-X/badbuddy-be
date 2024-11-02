@@ -106,29 +106,19 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*models.
 
 func (r *userRepository) Update(ctx context.Context, user *models.User) error {
 	query := `
-        UPDATE users SET
-            email = :email,
-            first_name = :first_name,
-            last_name = :last_name,
-            phone = :phone,
-            play_level = :play_level,
-            location = :location,
-            bio = :bio,
-            avatar_url = :avatar_url,
-            status = :status
-        WHERE id = :id AND status != $1
-        RETURNING id`
+		UPDATE users
+		SET
+			first_name = :first_name,
+			last_name = :last_name,
+			phone = :phone,
+			play_level = :play_level,
+			location = :location,
+			bio = :bio,
+			avatar_url = :avatar_url
+		WHERE id = :id AND status != 'inactive'`
 
 	result, err := r.db.NamedExecContext(ctx, query, user)
 	if err != nil {
-		if pqErr, ok := err.(*pq.Error); ok {
-			switch pqErr.Code {
-			case "23505":
-				return ErrDuplicateEmail
-			case "23502":
-				return fmt.Errorf("%w: missing required field", ErrInvalidInput)
-			}
-		}
 		return fmt.Errorf("failed to update user: %w", err)
 	}
 
