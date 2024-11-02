@@ -27,19 +27,19 @@ type UpdateVenueRequest struct {
 	Status      string    `json:"status"`
 }
 
-type CreateCourtRequest struct {
-	Name         string  `json:"name" validate:"required"`
-	Description  string  `json:"description"`
-	PricePerHour float64 `json:"price_per_hour" validate:"required,gt=0"`
-}
+// type CreateCourtRequest struct {
+// 	Name         string  `json:"name" validate:"required"`
+// 	Description  string  `json:"description"`
+// 	PricePerHour float64 `json:"price_per_hour" validate:"required,gt=0"`
+// }
 
-type UpdateCourtRequest struct {
-	CourtID      string  `json:"court_id" validate:"required,uuid"`
-	Name         string  `json:"name"`
-	Description  string  `json:"description"`
-	PricePerHour float64 `json:"price_per_hour" validate:"gt=0"`
-	Status       string  `json:"status"`
-}
+// type UpdateCourtRequest struct {
+// 	CourtID      string  `json:"court_id" validate:"required,uuid"`
+// 	Name         string  `json:"name"`
+// 	Description  string  `json:"description"`
+// 	PricePerHour float64 `json:"price_per_hour" validate:"gt=0"`
+// 	Status       string  `json:"status"`
+// }
 
 type AddReviewRequest struct {
 	Rating  int    `json:"rating" validate:"required,min=1,max=5"`
