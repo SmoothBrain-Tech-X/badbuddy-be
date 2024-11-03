@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -81,7 +82,7 @@ func (r *bookingRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.
 	return &booking, nil
 }
 
-func (r *bookingRepository) List(ctx context.Context, filters map[string]interface{}, limit, offset int) ([]models.CourtBooking, error) {
+func (r *bookingRepository) List(ctx context.Context, userID uuid.UUID, filters map[string]interface{}, limit, offset int) ([]models.CourtBooking, error) {
 	query := `
 		SELECT 
 			b.*,
@@ -123,6 +124,12 @@ func (r *bookingRepository) List(ctx context.Context, filters map[string]interfa
 		argCount++
 	}
 
+	if userID != uuid.Nil {
+		query += fmt.Sprintf(" AND b.user_id = $%d", argCount)
+		args = append(args, userID)
+		argCount++
+	}
+
 	query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", argCount, argCount+1)
 	args = append(args, limit, offset)
 
@@ -149,8 +156,7 @@ func (r *bookingRepository) Update(ctx context.Context, booking *models.CourtBoo
 		UPDATE court_bookings SET
 			status = :status,
 			notes = :notes,
-			updated_at = :updated_at,
-			cancelled_at = :cancelled_at
+			updated_at = :updated_at
 		WHERE id = :id`
 
 	result, err := r.db.NamedExecContext(ctx, query, booking)
@@ -312,18 +318,21 @@ func (r *bookingRepository) CheckCourtAvailability(ctx context.Context, courtID 
         FROM courts c
         JOIN venues v ON v.id = c.venue_id
         WHERE c.id = $1`
-
-	var openRange []responses.OpenRangeResponse
-	if err := r.db.GetContext(ctx, &openRange, venueQuery, courtID); err != nil {
+	var openRangeJson json.RawMessage
+	if err := r.db.GetContext(ctx, &openRangeJson, venueQuery, courtID); err != nil {
 		return false, err
 	}
-
+	var openRange []responses.OpenRangeResponse
+	errParseOpenRangeJson := json.Unmarshal(openRangeJson, &openRange)
+	if errParseOpenRangeJson != nil {
+		return false, errParseOpenRangeJson
+	}
 	// Get the day of week for the booking date
 	dayOfWeek := strings.ToLower(date.Weekday().String())
 
 	// Check if the requested time falls within venue operating hours
 	for _, schedule := range openRange {
-		if schedule.Day == dayOfWeek {
+		if strings.ToLower(schedule.Day) == dayOfWeek {
 			// Convert schedule times to same date as booking for comparison
 			scheduleOpen := time.Date(
 				startTime.Year(), startTime.Month(), startTime.Day(),
@@ -337,7 +346,10 @@ func (r *bookingRepository) CheckCourtAvailability(ctx context.Context, courtID 
 			)
 
 			// Check if booking time falls within operating hours
-			if startTime.Before(scheduleOpen) || endTime.After(scheduleClose) {
+			if startTime.Hour() < scheduleOpen.Hour() ||
+				(startTime.Hour() == scheduleOpen.Hour() && startTime.Minute() < scheduleOpen.Minute()) ||
+				endTime.Hour() > scheduleClose.Hour() ||
+				(endTime.Hour() == scheduleClose.Hour() && endTime.Minute() > scheduleClose.Minute()) {
 				return false, nil
 			}
 			return true, nil
@@ -388,10 +400,10 @@ func (r *bookingRepository) GetPayment(ctx context.Context, bookingID uuid.UUID)
 func (r *bookingRepository) CreatePayment(ctx context.Context, payment *models.Payment) error {
 	query := `
 		INSERT INTO payments (
-			id, booking_id, amount, status, payment_method,
+			id, booking_id, user_id, amount, status, payment_method,
 			transaction_id, created_at, updated_at
 		) VALUES (
-			:id, :booking_id, :amount, :status, :payment_method,
+			:id, :booking_id, :user_id, :amount, :status, :payment_method,
 			:transaction_id, :created_at, :updated_at
 		)`
 
@@ -403,6 +415,7 @@ func (r *bookingRepository) UpdatePayment(ctx context.Context, payment *models.P
 	query := `
 		UPDATE payments SET
 			status = :status,
+			payment_method = :payment_method,
 			updated_at = :updated_at
 		WHERE id = :id`
 
@@ -423,7 +436,7 @@ func (r *bookingRepository) UpdatePayment(ctx context.Context, payment *models.P
 	return nil
 }
 
-func (r *bookingRepository) Count(ctx context.Context, filters map[string]interface{}) (int, error) {
+func (r *bookingRepository) Count(ctx context.Context, userID uuid.UUID, filters map[string]interface{}) (int, error) {
 	query := `
 		SELECT COUNT(*)
 		FROM court_bookings b
@@ -459,6 +472,11 @@ func (r *bookingRepository) Count(ctx context.Context, filters map[string]interf
 		argCount++
 	}
 
+	if userID != uuid.Nil {
+		query += fmt.Sprintf(" AND b.user_id = $%d", argCount)
+		args = append(args, userID)
+		argCount++
+	}
 	var count int
 	err := r.db.GetContext(ctx, &count, query, args...)
 	if err != nil {

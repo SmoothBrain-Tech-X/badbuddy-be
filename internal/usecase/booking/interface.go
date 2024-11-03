@@ -13,12 +13,14 @@ import (
 type UseCase interface {
 	CreateBooking(ctx context.Context, userID uuid.UUID, req requests.CreateBookingRequest) (*responses.BookingResponse, error)
 	GetBooking(ctx context.Context, id uuid.UUID) (*responses.BookingResponse, error)
-	ListBookings(ctx context.Context, req requests.ListBookingsRequest) (*responses.BookingListResponse, error)
+	ListBookings(ctx context.Context, userID uuid.UUID, req requests.ListBookingsRequest) (*responses.BookingListResponse, error)
 	UpdateBooking(ctx context.Context, id uuid.UUID, req requests.UpdateBookingRequest) (*responses.BookingResponse, error)
 	CancelBooking(ctx context.Context, id uuid.UUID, userID uuid.UUID) error
 	GetUserBookings(ctx context.Context, userID uuid.UUID, includeHistory bool) ([]responses.BookingResponse, error)
 	CheckAvailability(ctx context.Context, req requests.CheckAvailabilityRequest) (*responses.CourtAvailabilityResponse, error)
-	CreatePayment(ctx context.Context, bookingID uuid.UUID, req requests.CreatePaymentRequest) (*responses.PaymentResponse, error)
+	GetPayment(ctx context.Context, id uuid.UUID) (*responses.PaymentResponse, error)
+	CreatePayment(ctx context.Context, id uuid.UUID, userID uuid.UUID, req requests.CreatePaymentRequest) (*responses.PaymentResponse, error)
+	UpdatePayment(ctx context.Context, id uuid.UUID, userID uuid.UUID, req requests.UpdatePaymentRequest) (*responses.PaymentResponse, error)
 }
 
 var (

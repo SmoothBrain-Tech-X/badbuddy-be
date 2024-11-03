@@ -13,7 +13,7 @@ import (
 type BookingRepository interface {
 	Create(ctx context.Context, booking *models.CourtBooking) error
 	GetByID(ctx context.Context, id uuid.UUID) (*models.CourtBooking, error)
-	List(ctx context.Context, filters map[string]interface{}, limit, offset int) ([]models.CourtBooking, error)
+	List(ctx context.Context, userID uuid.UUID, filters map[string]interface{}, limit, offset int) ([]models.CourtBooking, error)
 	Update(ctx context.Context, booking *models.CourtBooking) error
 	Delete(ctx context.Context, id uuid.UUID) error
 	GetUserBookings(ctx context.Context, userID uuid.UUID, includeHistory bool) ([]models.CourtBooking, error)
@@ -24,6 +24,6 @@ type BookingRepository interface {
 	GetPayment(ctx context.Context, bookingID uuid.UUID) (*models.Payment, error)
 	CreatePayment(ctx context.Context, payment *models.Payment) error
 	UpdatePayment(ctx context.Context, payment *models.Payment) error
-	Count(ctx context.Context, filters map[string]interface{}) (int, error) // Added Count method
+	Count(ctx context.Context, userID uuid.UUID, filters map[string]interface{}) (int, error) // Added Count method
 
 }

@@ -6,6 +6,7 @@ import (
 	"badbuddy/internal/infrastructure/database"
 	"badbuddy/internal/infrastructure/server"
 	"badbuddy/internal/repositories/postgres"
+	"badbuddy/internal/usecase/booking"
 	"badbuddy/internal/usecase/chat"
 	"badbuddy/internal/usecase/facility"
 	"badbuddy/internal/usecase/session"
@@ -22,7 +23,7 @@ import (
 )
 
 func main() {
-	err := godotenv.Load("../../.env")
+	err := godotenv.Load(".env")
 	if err != nil {
 		log.Println("Warning: No .env file found")
 	}
@@ -75,6 +76,12 @@ func main() {
 	chatHandler := rest.NewChatHandler(chatUseCase, chatHub)
 	chatHandler.SetupChatRoutes(app)
 
+
+	bookingRepo := postgres.NewBookingRepository(db)
+	courtRepo := postgres.NewCourtRepository(db)
+	bookingUseCase := booking.NewBookingUseCase(bookingRepo, courtRepo, venueRepo)
+	bookingHandler := rest.NewBookingHandler(bookingUseCase)
+	bookingHandler.SetupBookingRoutes(app)
 
 	app.Get("/ws/:chat_id", ws.ChatWebSocketHandler(chatHub))
 
