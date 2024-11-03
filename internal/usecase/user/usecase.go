@@ -121,7 +121,7 @@ func (uc *useCase) Login(ctx context.Context, req requests.LoginRequest) (*respo
 	user, err := uc.userRepo.GetByEmail(ctx, req.Email)
 
 	if err != nil {
-		return nil, ErrInvalidCredentials
+		return nil, fmt.Errorf("email not found: %w", err)
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
@@ -241,13 +241,26 @@ func (uc *useCase) SearchUsers(ctx context.Context, query string, filters reques
 }
 
 func (uc *useCase) mapUserToResponse(user *models.User) responses.UserResponse {
+	var userID, venueID string
+
+	if user.ID != uuid.Nil {
+		userID = user.ID.String()
+	}
+
+	if user.VenueID != nil && *user.VenueID != uuid.Nil {
+		venueID = user.VenueID.String()
+	}
+
 	return responses.UserResponse{
-		ID:           user.ID.String(),
+		ID:           userID,
 		Email:        user.Email,
 		FirstName:    user.FirstName,
 		LastName:     user.LastName,
 		Phone:        user.Phone,
 		PlayLevel:    string(user.PlayLevel),
+		Gender:       user.Gender,
+		PlayHand:     user.PlayHand,
+		VenueID:      venueID,
 		Location:     user.Location,
 		Bio:          user.Bio,
 		AvatarURL:    user.AvatarURL,
