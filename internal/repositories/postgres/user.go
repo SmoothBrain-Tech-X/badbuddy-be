@@ -33,12 +33,12 @@ func (r *userRepository) Create(ctx context.Context, user *models.User) error {
 	query := `
         INSERT INTO users (
             id, email, password, first_name, last_name,
-            phone, play_level, location, bio, 
+            phone, play_level,play_hand, location, bio, 
             avatar_url, status, gender,
             created_at, last_active_at
         ) VALUES (
             :id, :email, :password, :first_name, :last_name,
-            :phone, :play_level, :location, :bio,
+            :phone, :play_level,:play_hand, :location, :bio,
             :avatar_url, :status, :gender,
             :created_at, :last_active_at
         )`
