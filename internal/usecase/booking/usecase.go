@@ -449,7 +449,10 @@ func (uc *useCase) generateTimeSlots(ctx context.Context, courtID uuid.UUID, dat
 
 	var openRanges []responses.OpenRangeResponse
 
-	if err := json.Unmarshal(venue.OpenRange, &openRanges); err != nil {
+	if !venue.OpenRange.Valid {
+		return nil, fmt.Errorf("venue open range is invalid")
+	}
+	if err := json.Unmarshal(venue.OpenRange.RawMessage, &openRanges); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal open range: %w", err)
 	}
 
@@ -629,8 +632,10 @@ func (uc *useCase) isVenueOpenForBooking(venue *models.Venue, date time.Time, st
 	dayOfWeek := strings.ToLower(date.Weekday().String())
 
 	var openRanges []responses.OpenRangeResponse
-
-	if err := json.Unmarshal(venue.OpenRange, &openRanges); err != nil {
+	if !venue.OpenRange.Valid {
+		return fmt.Errorf("venue open range is invalid")
+	}
+	if err := json.Unmarshal(venue.OpenRange.RawMessage, &openRanges); err != nil {
 		return fmt.Errorf("failed to unmarshal open range: %w", err)
 	}
 

@@ -35,7 +35,7 @@ func (uc *useCase) CreateVenue(ctx context.Context, ownerID uuid.UUID, req reque
 		Location:    req.Location,
 		Phone:       req.Phone,
 		Email:       req.Email,
-		OpenRange:   mustMarshalJSON(req.OpenRange),
+		OpenRange:   models.NullRawMessage{RawMessage: mustMarshalJSON(req.OpenRange)},
 		ImageURLs:   req.ImageURLs,
 		Status:      models.VenueStatusActive,
 		OwnerID:     ownerID,
@@ -48,7 +48,7 @@ func (uc *useCase) CreateVenue(ctx context.Context, ownerID uuid.UUID, req reque
 	}
 
 	openRange := []responses.OpenRangeResponse{}
-	err := unMarshalJSON(venue.OpenRange, &openRange)
+	err := unMarshalJSON(venue.OpenRange.RawMessage, &openRange)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding enroll response: %v", err)
 	}
@@ -86,7 +86,7 @@ func (uc *useCase) GetVenue(ctx context.Context, id uuid.UUID) (*responses.Venue
 	}
 
 	openRange := []responses.OpenRangeResponse{}
-	if unMarshalJSON(venueWithCourts.OpenRange, openRange) != nil {
+	if unMarshalJSON(venueWithCourts.OpenRange.RawMessage, &openRange) != nil {
 		return nil, fmt.Errorf("error decoding enroll response: %v", err)
 	}
 	return &responses.VenueResponse{
@@ -130,7 +130,7 @@ func (uc *useCase) UpdateVenue(ctx context.Context, id uuid.UUID, req requests.U
 		venue.Email = req.Email
 	}
 	if req.OpenRange != nil {
-		venue.OpenRange = mustMarshalJSON(req.OpenRange)
+		venue.OpenRange = models.NullRawMessage{RawMessage: mustMarshalJSON(req.OpenRange)}
 	}
 	if req.ImageURLs != "" {
 		venue.ImageURLs = req.ImageURLs
@@ -159,7 +159,7 @@ func (uc *useCase) ListVenues(ctx context.Context, location string, limit, offse
 	for i, venue := range venues {
 
 		openRange := []responses.OpenRangeResponse{}
-		if unMarshalJSON(venue.OpenRange, openRange) != nil {
+		if unMarshalJSON(json.RawMessage(venue.OpenRange.RawMessage), &openRange) != nil {
 			return nil, fmt.Errorf("error decoding enroll response: %v", err)
 		}
 		venueResponses[i] = responses.VenueResponse{
@@ -189,19 +189,21 @@ func (uc *useCase) SearchVenues(ctx context.Context, query string, limit, offset
 
 	venueResponses := make([]responses.VenueResponse, len(venues))
 	for i, venue := range venues {
-		openRange := []responses.OpenRangeResponse{}
-		if unMarshalJSON(venue.OpenRange, openRange) != nil {
-			return responses.VenueResponseDTO{}, fmt.Errorf("error decoding enroll response: %v", err)
-		}
 		venueResponses[i] = responses.VenueResponse{
-			ID:           venue.ID.String(),
-			Name:         venue.Name,
-			Description:  venue.Description,
-			Address:      venue.Address,
-			Location:     venue.Location,
-			Phone:        venue.Phone,
-			Email:        venue.Email,
-			OpenRange:    openRange,
+			ID:          venue.ID.String(),
+			Name:        venue.Name,
+			Description: venue.Description,
+			Address:     venue.Address,
+			Location:    venue.Location,
+			Phone:       venue.Phone,
+			Email:       venue.Email,
+			OpenRange: func() []responses.OpenRangeResponse {
+				var openRange []responses.OpenRangeResponse
+				if err := unMarshalJSON(venue.OpenRange.RawMessage, &openRange); err != nil {
+					return nil
+				}
+				return openRange
+			}(),
 			ImageURLs:    venue.ImageURLs,
 			Status:       string(venue.Status),
 			Rating:       venue.Rating,

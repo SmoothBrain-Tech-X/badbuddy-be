@@ -24,22 +24,69 @@ func NewVenueRepository(db *sqlx.DB) interfaces.VenueRepository {
 }
 
 func (r *venueRepository) Create(ctx context.Context, venue *models.Venue) error {
-	query := `
-		INSERT INTO venues (
-			id, name, description, address, location, phone, email,
-			open_range, image_urls, status, rating,
-			total_reviews, owner_id, created_at, updated_at
-		) VALUES (
-			:id, :name, :description, :address, :location, :phone, :email,
-			:open_range, :image_urls, :status, :rating,
-			:total_reviews, :owner_id, :created_at, :updated_at
-		)`
+	// First check if venue with same name exists
+	checkQuery := `
+        SELECT EXISTS (
+            SELECT 1 FROM venues 
+            WHERE LOWER(name) = LOWER($1)
+        )
+    `
 
-	_, err := r.db.NamedExecContext(ctx, query, venue)
+	var exists bool
+	err := r.db.GetContext(ctx, &exists, checkQuery, venue.Name)
+	if err != nil {
+		return fmt.Errorf("failed to check venue name: %w", err)
+	}
+
+	if exists {
+		return fmt.Errorf("venue with name '%s' already exists", venue.Name)
+	}
+
+	// If no duplicate, proceed with insert
+	insertQuery := `
+        INSERT INTO venues (
+            id, name, description, address, location, phone, email,
+            open_range, image_urls, status, rating,
+            total_reviews, owner_id, created_at, updated_at
+        ) VALUES (
+            safe_generate_uuid(), :name, :description, :address, :location, :phone, :email,
+            :open_range, :image_urls, :status, :rating,
+            :total_reviews, :owner_id, :created_at, :updated_at
+        )
+        RETURNING *
+    `
+
+	// Use NamedQueryRow instead of NamedExec to get the returned values
+	rows, err := r.db.NamedQueryContext(ctx, insertQuery, venue)
 	if err != nil {
 		return fmt.Errorf("failed to create venue: %w", err)
 	}
+	defer rows.Close()
+
+	// Scan the returned row into the venue struct
+	if rows.Next() {
+		err = rows.StructScan(venue)
+		if err != nil {
+			return fmt.Errorf("failed to scan venue: %w", err)
+		}
+	}
+
 	return nil
+}
+
+// You might want to create custom errors for better error handling
+type ErrDuplicateVenue struct {
+	Name string
+}
+
+func (e *ErrDuplicateVenue) Error() string {
+	return fmt.Sprintf("venue with name '%s' already exists", e.Name)
+}
+
+// Optional: Create a method to check if an error is a duplicate venue error
+func IsDuplicateVenueError(err error) bool {
+	_, ok := err.(*ErrDuplicateVenue)
+	return ok
 }
 
 func (r *venueRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.VenueWithCourts, error) {
@@ -155,7 +202,6 @@ func (r *venueRepository) CountVenues(ctx context.Context) (int, error) {
 
 	return count, nil
 }
-
 func (r *venueRepository) Search(ctx context.Context, query string, limit, offset int) ([]models.Venue, error) {
 	searchQuery := `
 		SELECT * FROM venues 
@@ -284,7 +330,6 @@ func (r *venueRepository) AddReview(ctx context.Context, review *models.VenueRev
 	}
 
 	return nil
-
 }
 
 func (r *venueRepository) GetReviews(ctx context.Context, venueID uuid.UUID, limit, offset int) ([]models.VenueReview, error) {

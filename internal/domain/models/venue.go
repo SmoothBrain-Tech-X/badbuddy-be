@@ -3,6 +3,7 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,24 +22,51 @@ const (
 	CourtStatusMaintenance CourtStatus = "maintenance"
 )
 
+// NullRawMessage is a custom type that properly handles NULL JSON values
+type NullRawMessage struct {
+	json.RawMessage
+	Valid bool
+}
+
+// Scan implements the sql.Scanner interface
+func (n *NullRawMessage) Scan(value interface{}) error {
+	if value == nil {
+		n.RawMessage, n.Valid = nil, false
+		return nil
+	}
+
+	switch v := value.(type) {
+	case []byte:
+		n.RawMessage = json.RawMessage(v)
+		n.Valid = true
+		return nil
+	case string:
+		n.RawMessage = json.RawMessage(v)
+		n.Valid = true
+		return nil
+	default:
+		return fmt.Errorf("unsupported Scan, storing driver.Value type %T into type *NullRawMessage", value)
+	}
+}
+
 type Venue struct {
-	ID            uuid.UUID       `db:"id"`
-	Name          string          `db:"name"`
-	Description   string          `db:"description"`
-	Address       string          `db:"address"`
-	Location      string          `db:"location"`
-	Phone         string          `db:"phone"`
-	Email         string          `db:"email"`
-	OpenRange     json.RawMessage `db:"open_range"`
-	ImageURLs     string          `db:"image_urls"`
-	Status        VenueStatus     `db:"status"`
-	Rating        float64         `db:"rating"`
-	TotalReviews  int             `db:"total_reviews"`
-	OwnerID       uuid.UUID       `db:"owner_id"`
-	CreatedAt     time.Time       `db:"created_at"`
-	UpdatedAt     time.Time       `db:"updated_at"`
-	DeletedAt     *time.Time      `db:"deleted_at"`
-	Search_vector string          `db:"search_vector"`
+	ID            uuid.UUID      `db:"id"`
+	Name          string         `db:"name"`
+	Description   string         `db:"description"`
+	Address       string         `db:"address"`
+	Location      string         `db:"location"`
+	Phone         string         `db:"phone"`
+	Email         string         `db:"email"`
+	OpenRange     NullRawMessage `db:"open_range"`
+	ImageURLs     string         `db:"image_urls"`
+	Status        VenueStatus    `db:"status"`
+	Rating        float64        `db:"rating"`
+	TotalReviews  int            `db:"total_reviews"`
+	OwnerID       uuid.UUID      `db:"owner_id"`
+	CreatedAt     time.Time      `db:"created_at"`
+	UpdatedAt     time.Time      `db:"updated_at"`
+	DeletedAt     *time.Time     `db:"deleted_at"`
+	Search_vector string         `db:"search_vector"`
 }
 
 type Court struct {
