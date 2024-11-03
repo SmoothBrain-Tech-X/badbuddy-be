@@ -3,19 +3,21 @@ package rest
 import (
 	"badbuddy/internal/delivery/dto/requests"
 	"badbuddy/internal/delivery/http/middleware"
+	"badbuddy/internal/usecase/facility"
 	"badbuddy/internal/usecase/venue"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
 
 type VenueHandler struct {
 	venueUseCase venue.UseCase
+	facilityUseCase facility.UseCase
 }
 
-func NewVenueHandler(venueUseCase venue.UseCase) *VenueHandler {
+func NewVenueHandler(venueUseCase venue.UseCase, facilityUseCase facility.UseCase) *VenueHandler {
 	return &VenueHandler{
 		venueUseCase: venueUseCase,
+		facilityUseCase: facilityUseCase,
 	}
 }
 
@@ -27,7 +29,7 @@ func (h *VenueHandler) SetupVenueRoutes(app *fiber.App) {
 	venueGroup.Get("/search", h.SearchVenues)
 	venueGroup.Get("/:id", h.GetVenue)
 	venueGroup.Get("/:id/reviews", h.GetReviews)
-	venueGroup.Get("/:id/facilities", h.GetFacilities)
+	venueGroup.Get("/:id/facilities", h.GetFacilitiesOfVenue)
 
 	// Protected routes
 	venueGroup.Use(middleware.AuthRequired())
@@ -50,6 +52,14 @@ func (h *VenueHandler) CreateVenue(c *fiber.Ctx) error {
 		})
 	}
 	ownerID := c.Locals("userID").(uuid.UUID)
+
+	facility := req.Facilities
+
+	if !h.validateFacilities(facility, c) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid facility ID",
+		})
+	}
 
 	venue, err := h.venueUseCase.CreateVenue(c.Context(), ownerID, req)
 	if err != nil {
@@ -88,10 +98,33 @@ func (h *VenueHandler) UpdateVenue(c *fiber.Ctx) error {
 		})
 	}
 
+	// check ownerID is owner or not
+	ownerID := c.Locals("userID").(uuid.UUID)
+	isOwner, err := h.venueUseCase.IsOwner(c.Context(), id, ownerID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	if !isOwner {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+
 	var req requests.UpdateVenueRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid request body",
+		})
+	}
+
+	facility := req.Facilities
+
+	if !h.validateFacilities(facility, c) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid facility ID",
 		})
 	}
 
@@ -146,6 +179,21 @@ func (h *VenueHandler) AddCourt(c *fiber.Ctx) error {
 		})
 	}
 
+	// check ownerID is owner or not
+	ownerID := c.Locals("userID").(uuid.UUID)
+	isOwner, err := h.venueUseCase.IsOwner(c.Context(), venueID, ownerID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	if !isOwner {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+
 	var req requests.CreateCourtRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -168,6 +216,21 @@ func (h *VenueHandler) UpdateCourt(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid venue ID",
+		})
+	}
+
+	// check ownerID is owner or not
+	ownerID := c.Locals("userID").(uuid.UUID)
+	isOwner, err := h.venueUseCase.IsOwner(c.Context(), vendorID, ownerID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	if !isOwner {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
 		})
 	}
 
@@ -203,6 +266,21 @@ func (h *VenueHandler) DeleteCourt(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid venue ID",
+		})
+	}
+
+	// check ownerID is owner or not
+	ownerID := c.Locals("userID").(uuid.UUID)
+	isOwner, err := h.venueUseCase.IsOwner(c.Context(), venueID, ownerID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	if !isOwner {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
 		})
 	}
 
@@ -276,7 +354,7 @@ func (h *VenueHandler) AddReview(c *fiber.Ctx) error {
 	})
 }
 
-func (h *VenueHandler) GetFacilities(c *fiber.Ctx) error {
+func (h *VenueHandler) GetFacilitiesOfVenue(c *fiber.Ctx) error {
 	venueID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -292,4 +370,18 @@ func (h *VenueHandler) GetFacilities(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(facilities)
+}
+
+func (h *VenueHandler) validateFacilities(facility []string, c *fiber.Ctx) bool {
+	for _, f := range facility {
+		facilityID, err := uuid.Parse(f)
+		if err != nil {
+			return false
+		}
+		_, err = h.facilityUseCase.GetFacilityByID(c.Context(), facilityID)
+		if err != nil {
+			return false
+		}
+	}
+	return true
 }

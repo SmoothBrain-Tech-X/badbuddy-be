@@ -47,6 +47,19 @@ func (uc *useCase) CreateVenue(ctx context.Context, ownerID uuid.UUID, req reque
 		return nil, fmt.Errorf("failed to create venue: %w", err)
 	}
 
+	facilityUUIDs := make([]uuid.UUID, len(req.Facilities))
+	for i, facility := range req.Facilities {
+		facilityUUID, err := uuid.Parse(facility)
+		if err != nil {
+			return nil, fmt.Errorf("invalid facility ID: %w", err)
+		}
+		facilityUUIDs[i] = facilityUUID
+	}
+
+	if err := uc.venueRepo.AddFacilities(ctx, venue.ID, facilityUUIDs); err != nil {
+		return nil, fmt.Errorf("failed to add facilities: %w", err)
+	}
+
 	return &responses.VenueResponse{
 		ID:           venue.ID.String(),
 		Name:         venue.Name,
@@ -60,6 +73,7 @@ func (uc *useCase) CreateVenue(ctx context.Context, ownerID uuid.UUID, req reque
 		Status:       string(venue.Status),
 		Rating:       venue.Rating,
 		TotalReviews: venue.TotalReviews,
+		Facilities: convertToFacilityResponse(venue.Facilities),
 	}, nil
 }
 
@@ -98,6 +112,8 @@ func (uc *useCase) GetVenue(ctx context.Context, id uuid.UUID) (*responses.Venue
 		Rating:       venueWithCourts.Rating,
 		TotalReviews: venueWithCourts.TotalReviews,
 		Courts:       courts,
+		Facilities: convertToFacilityResponse(venueWithCourts.Facilities),
+		
 	}, nil
 }
 
@@ -137,6 +153,21 @@ func (uc *useCase) UpdateVenue(ctx context.Context, id uuid.UUID, req requests.U
 	if req.Status != "" {
 		venue.Status = models.VenueStatus(req.Status)
 	}
+
+	facilityUUIDs := make([]uuid.UUID, len(req.Facilities))
+	for i, facility := range req.Facilities {
+		facilityUUID, err := uuid.Parse(facility)
+		if err != nil {
+			return fmt.Errorf("invalid facility ID: %w", err)
+		}
+		facilityUUIDs[i] = facilityUUID
+	}
+
+	if err := uc.venueRepo.UpdateFacilities(ctx, venue.ID, facilityUUIDs); err != nil {
+		return fmt.Errorf("failed to update facilities: %w", err)
+	}
+
+
 	venue.UpdatedAt = time.Now()
 	if err := uc.venueRepo.Update(ctx, &venue.Venue); err != nil {
 		return fmt.Errorf("failed to update venue: %w", err)
@@ -172,6 +203,7 @@ func (uc *useCase) ListVenues(ctx context.Context, location string, limit, offse
 			Status:       string(venue.Status),
 			Rating:       venue.Rating,
 			TotalReviews: venue.TotalReviews,
+			Facilities: convertToFacilityResponse(venue.Facilities),
 		}
 	}
 
@@ -205,6 +237,7 @@ func (uc *useCase) SearchVenues(ctx context.Context, query string, limit, offset
 			Status:       string(venue.Status),
 			Rating:       venue.Rating,
 			TotalReviews: venue.TotalReviews,
+			Facilities: convertToFacilityResponse(venue.Facilities),
 		}
 	}
 
@@ -388,7 +421,7 @@ func (uc *useCase) GetFacilities(ctx context.Context, venueID uuid.UUID) (*respo
 	facilityResponses := make([]responses.FacilityResponse, len(facilities))
 	for i := range facilities {
 		facilityResponses[i] = responses.FacilityResponse{
-			ID : facilities[i].ID.String(),
+			ID:   facilities[i].ID.String(),
 			Name: facilities[i].Name,
 		}
 	}
@@ -396,6 +429,15 @@ func (uc *useCase) GetFacilities(ctx context.Context, venueID uuid.UUID) (*respo
 	return &responses.FacilityListResponse{
 		Facilities: facilityResponses,
 	}, nil
+}
+
+func (uc *useCase) IsOwner(ctx context.Context, venueID uuid.UUID, ownerID uuid.UUID) (bool, error) {
+	venue, err := uc.venueRepo.GetByID(ctx, venueID)
+	if err != nil {
+		return false, fmt.Errorf("failed to get venue: %w", err)
+	}
+
+	return venue.OwnerID == ownerID, nil
 }
 
 func convertToOpenRangeResponse(openRanges []requests.OpenRange) []responses.OpenRangeResponse {
@@ -409,6 +451,17 @@ func convertToOpenRangeResponse(openRanges []requests.OpenRange) []responses.Ope
 		})
 	}
 	return openRangeResponses
+}
+
+func convertToFacilityResponse(facilities []models.Facility) []responses.FacilityResponse {
+	facilityResponses := make([]responses.FacilityResponse, len(facilities))
+	for i, facility := range facilities {
+		facilityResponses[i] = responses.FacilityResponse{
+			ID:   facility.ID.String(),
+			Name: facility.Name,
+		}
+	}
+	return facilityResponses
 }
 
 func mustMarshalJSON(v interface{}) []byte {

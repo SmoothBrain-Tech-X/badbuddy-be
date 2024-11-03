@@ -13,6 +13,7 @@ type CreateVenueRequest struct {
 	Email       string      `json:"email" validate:"required,email"`
 	OpenRange   []OpenRange `json:"open_range" validate:"required"`
 	ImageURLs   string      `json:"image_urls"`
+	Facilities  []string    `json:"facilities" validate:"required"`
 }
 
 type OpenRange struct {
@@ -32,6 +33,7 @@ type UpdateVenueRequest struct {
 	OpenRange   []OpenRange `json:"open_range" validate:"required"`
 	ImageURLs   string      `json:"image_urls"`
 	Status      string      `json:"status"`
+	Facilities  []string    `json:"facilities"`
 }
 
 // type CreateCourtRequest struct {

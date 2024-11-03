@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -94,7 +95,7 @@ func (r *venueRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Ve
 
 	// Get venue details
 	query := `
-		SELECT * FROM venues WHERE id = $1 AND deleted_at IS NULL`
+		SELECT * FROM venues  WHERE id = $1 AND deleted_at IS NULL`
 	err := r.db.GetContext(ctx, &result.Venue, query, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -103,7 +104,18 @@ func (r *venueRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Ve
 		return nil, fmt.Errorf("failed to get venue: %w", err)
 	}
 
-	// Get courts
+	// Get facilities
+	facilitiesQuery := `
+		SELECT f.id, f.name
+		FROM venues_facilities vf
+		JOIN facilities f ON vf.facility_id = f.id
+		WHERE venue_id = $1`
+
+	err = r.db.SelectContext(ctx, &result.Venue.Facilities, facilitiesQuery, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get facilities: %w", err)
+	}
+
 	courtsQuery := `
 		SELECT * FROM courts 
 		WHERE venue_id = $1 AND deleted_at IS NULL 
@@ -188,16 +200,61 @@ func (r *venueRepository) Delete(ctx context.Context, id uuid.UUID) error {
 
 func (r *venueRepository) List(ctx context.Context, location string, limit, offset int) ([]models.Venue, error) {
 	query := `
-		SELECT * FROM venues 
-		WHERE deleted_at IS NULL
-		AND ($1 = '' OR location = $1)
-		ORDER BY rating DESC, total_reviews DESC, created_at DESC
+		SELECT 
+			v.id, v.name, v.description, v.address, v.location, v.phone, v.email,
+			v.open_range, v.image_urls, v.status, v.rating, v.total_reviews, v.owner_id,
+			v.created_at, v.updated_at, v.search_vector,
+			COALESCE(json_agg(
+				json_build_object('id', f.id, 'name', f.name)
+			) FILTER (WHERE f.id IS NOT NULL), '[]') AS facilities
+		FROM 
+			venues v
+		LEFT JOIN 
+			venues_facilities vf ON v.id = vf.venue_id
+		LEFT JOIN 
+			facilities f ON vf.facility_id = f.id
+		WHERE 
+			v.deleted_at IS NULL
+			AND ($1 = '' OR v.location = $1)
+		GROUP BY 
+			v.id
+		ORDER BY 
+			v.rating DESC, v.total_reviews DESC, v.created_at DESC
 		LIMIT $2 OFFSET $3`
 
-	venues := []models.Venue{}
-	err := r.db.SelectContext(ctx, &venues, query, location, limit, offset)
+	rows, err := r.db.QueryContext(ctx, query, location, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list venues: %w", err)
+	}
+	defer rows.Close()
+
+	var venues []models.Venue
+	for rows.Next() {
+		var venue models.Venue
+		var facilitiesJSON []byte
+
+		err := rows.Scan(
+			&venue.ID, &venue.Name, &venue.Description, &venue.Address, &venue.Location,
+			&venue.Phone, &venue.Email, &venue.OpenRange, &venue.ImageURLs,
+			&venue.Status, &venue.Rating, &venue.TotalReviews, &venue.OwnerID,
+			&venue.CreatedAt, &venue.UpdatedAt, &venue.Search_vector,
+			&facilitiesJSON,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan venue: %w", err)
+		}
+
+		// Unmarshal facilities JSON into the Facilities slice
+		err = json.Unmarshal(facilitiesJSON, &venue.Facilities)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal facilities for venue %s: %w", venue.ID, err)
+		}
+
+		venues = append(venues, venue)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate over rows: %w", err)
 	}
 
 	return venues, nil
@@ -218,24 +275,71 @@ func (r *venueRepository) CountVenues(ctx context.Context) (int, error) {
 }
 func (r *venueRepository) Search(ctx context.Context, query string, limit, offset int) ([]models.Venue, error) {
 	searchQuery := `
-		SELECT * FROM venues 
-		WHERE deleted_at IS NULL
-		AND (
-			search_vector @@ plainto_tsquery($1)
-			OR name ILIKE '%' || $1 || '%'
-			OR location ILIKE '%' || $1 || '%'
-		)
-		ORDER BY rating DESC, total_reviews DESC, created_at DESC
+		SELECT 
+			v.id, v.name, v.description, v.address, v.location, v.phone, v.email,
+			v.open_range, v.image_urls, v.status, v.rating, v.total_reviews, v.owner_id,
+			v.created_at, v.updated_at, v.search_vector,
+			COALESCE(json_agg(
+				json_build_object('id', f.id, 'name', f.name)
+			) FILTER (WHERE f.id IS NOT NULL), '[]') AS facilities
+		FROM 
+			venues v
+		LEFT JOIN 
+			venues_facilities vf ON v.id = vf.venue_id
+		LEFT JOIN 
+			facilities f ON vf.facility_id = f.id
+		WHERE 
+			v.deleted_at IS NULL
+			AND (
+				v.search_vector @@ plainto_tsquery($1)
+				OR v.name ILIKE '%' || $1 || '%'
+				OR v.location ILIKE '%' || $1 || '%'
+			)
+		GROUP BY 
+			v.id
+		ORDER BY 
+			v.rating DESC, v.total_reviews DESC, v.created_at DESC
 		LIMIT $2 OFFSET $3`
 
-	venues := []models.Venue{}
-	err := r.db.SelectContext(ctx, &venues, searchQuery, query, limit, offset)
+	rows, err := r.db.QueryContext(ctx, searchQuery, query, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search venues: %w", err)
+	}
+	defer rows.Close()
+
+	var venues []models.Venue
+	for rows.Next() {
+		var venue models.Venue
+		var facilitiesJSON []byte
+
+		// Scan venue fields, then the aggregated JSON for facilities
+		err := rows.Scan(
+			&venue.ID, &venue.Name, &venue.Description, &venue.Address, &venue.Location,
+			&venue.Phone, &venue.Email, &venue.OpenRange, &venue.ImageURLs,
+			&venue.Status, &venue.Rating, &venue.TotalReviews, &venue.OwnerID,
+			&venue.CreatedAt, &venue.UpdatedAt, &venue.Search_vector,
+			&facilitiesJSON,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan venue: %w", err)
+		}
+
+		// Unmarshal facilities JSON into the Facilities slice
+		err = json.Unmarshal(facilitiesJSON, &venue.Facilities)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal facilities for venue %s: %w", venue.ID, err)
+		}
+
+		venues = append(venues, venue)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate over rows: %w", err)
 	}
 
 	return venues, nil
 }
+
 
 func (r *venueRepository) AddCourt(ctx context.Context, court *models.Court) error {
 	query := `
@@ -418,4 +522,40 @@ func (r *venueRepository) GetFacilities(ctx context.Context, venueID uuid.UUID) 
 	}
 
 	return facilities, nil
+}
+
+func (r *venueRepository) AddFacilities(ctx context.Context, venueID uuid.UUID, facilityIDs []uuid.UUID) error {
+	query := `
+		INSERT INTO venues_facilities (venue_id, facility_id)
+		VALUES (:venue_id, :facility_id)`
+
+	for i := range facilityIDs {
+		_, err := r.db.NamedExecContext(ctx, query, map[string]interface{}{
+			"venue_id":    venueID,
+			"facility_id": facilityIDs[i],
+		})
+		if err != nil {
+			return fmt.Errorf("failed to add facility: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (r *venueRepository) UpdateFacilities(ctx context.Context, venueID uuid.UUID, facilityIDs []uuid.UUID) error {
+	// Delete all existing facilities
+	deleteQuery := `
+		DELETE FROM venues_facilities
+		WHERE venue_id = $1`
+	_, err := r.db.ExecContext(ctx, deleteQuery, venueID)
+	if err != nil {
+		return fmt.Errorf("failed to update facilities: %w", err)
+	}
+
+	err = r.AddFacilities(ctx, venueID, facilityIDs)
+	if err != nil {
+		return fmt.Errorf("failed to update facilities: %w", err)
+	}
+
+	return nil
 }

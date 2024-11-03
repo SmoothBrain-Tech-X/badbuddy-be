@@ -21,4 +21,5 @@ type UseCase interface {
 	AddReview(ctx context.Context, venueID uuid.UUID, userID uuid.UUID, req requests.AddReviewRequest) error
 	GetReviews(ctx context.Context, venueID uuid.UUID, limit, offset int) ([]responses.ReviewResponse, error)
 	GetFacilities(ctx context.Context, venueID uuid.UUID) (*responses.FacilityListResponse, error)
+	IsOwner(ctx context.Context, venueID uuid.UUID, ownerID uuid.UUID) (bool, error)
 }

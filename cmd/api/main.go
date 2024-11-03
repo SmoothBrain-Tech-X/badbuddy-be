@@ -54,10 +54,15 @@ func main() {
 	userUseCase := user.NewUserUseCase(userRepo, "your-jwt-secret", 24*time.Hour)
 	userHandler := rest.NewUserHandler(userUseCase)
 	userHandler.SetupUserRoutes(app)
+	
+	facilityRepo := postgres.NewFacilityRepository(db)
+	facilityUseCase := facility.NewFacilityUseCase(facilityRepo)
+	facilityHandler := rest.NewFacilityHandler(facilityUseCase, userUseCase)
+	facilityHandler.SetupFacilityRoutes(app)
 
 	venueRepo := postgres.NewVenueRepository(db)
 	venueUseCase := venue.NewVenueUseCase(venueRepo, userRepo)
-	venueHandler := rest.NewVenueHandler(venueUseCase)
+	venueHandler := rest.NewVenueHandler(venueUseCase, facilityUseCase)
 	venueHandler.SetupVenueRoutes(app)
 
 	sessionRepo := postgres.NewSessionRepository(db)
@@ -70,10 +75,6 @@ func main() {
 	chatHandler := rest.NewChatHandler(chatUseCase, chatHub)
 	chatHandler.SetupChatRoutes(app)
 
-	facilityRepo := postgres.NewFacilityRepository(db)
-	facilityUseCase := facility.NewFacilityUseCase(facilityRepo)
-	facilityHandler := rest.NewFacilityHandler(facilityUseCase, userUseCase)
-	facilityHandler.SetupFacilityRoutes(app)
 
 	app.Get("/ws/:chat_id", ws.ChatWebSocketHandler(chatHub))
 
