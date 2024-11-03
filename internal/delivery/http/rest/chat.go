@@ -67,6 +67,11 @@ func (h *ChatHandler) GetChatMessage(c *fiber.Ctx) error {
 		return h.handleError(c, err)
 	}
 
+	message_bytes, _ := json.Marshal(responses.BoardCastMessageResponse{
+		MessageaType: "read_all_message",
+	})
+	h.chatHub.GetRoom(chatUUID.String()).Broadcast <- message_bytes
+
 	return c.Status(fiber.StatusOK).JSON(responses.SuccessResponse{
 		Message: "Chat messages retrieved successfully",
 		Data:    chat,
@@ -104,7 +109,7 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(responses.SuccessResponse{
 		Message: "Message sent successfully",
-		Data:    chatMessage,	
+		Data:    chatMessage,
 	})
 }
 
@@ -210,7 +215,7 @@ func (h *ChatHandler) UpdateMessage(c *fiber.Ctx) error {
 		MessageaType: "update_message",
 		Data: map[string]interface{}{
 			"message_id": messageID,
-			"message": req.Message,
+			"message":    req.Message,
 		},
 	})
 	h.chatHub.GetRoom(chatUUID.String()).Broadcast <- messageBytes
