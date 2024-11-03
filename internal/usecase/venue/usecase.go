@@ -73,7 +73,7 @@ func (uc *useCase) CreateVenue(ctx context.Context, ownerID uuid.UUID, req reque
 		Status:       string(venue.Status),
 		Rating:       venue.Rating,
 		TotalReviews: venue.TotalReviews,
-		Facilities: convertToFacilityResponse(venue.Facilities),
+		Facilities:   convertToFacilityResponse(venue.Facilities),
 	}, nil
 }
 
@@ -112,8 +112,7 @@ func (uc *useCase) GetVenue(ctx context.Context, id uuid.UUID) (*responses.Venue
 		Rating:       venueWithCourts.Rating,
 		TotalReviews: venueWithCourts.TotalReviews,
 		Courts:       courts,
-		Facilities: convertToFacilityResponse(venueWithCourts.Facilities),
-		
+		Facilities:   convertToFacilityResponse(venueWithCourts.Facilities),
 	}, nil
 }
 
@@ -167,7 +166,6 @@ func (uc *useCase) UpdateVenue(ctx context.Context, id uuid.UUID, req requests.U
 		return fmt.Errorf("failed to update facilities: %w", err)
 	}
 
-
 	venue.UpdatedAt = time.Now()
 	if err := uc.venueRepo.Update(ctx, &venue.Venue); err != nil {
 		return fmt.Errorf("failed to update venue: %w", err)
@@ -203,7 +201,7 @@ func (uc *useCase) ListVenues(ctx context.Context, location string, limit, offse
 			Status:       string(venue.Status),
 			Rating:       venue.Rating,
 			TotalReviews: venue.TotalReviews,
-			Facilities: convertToFacilityResponse(venue.Facilities),
+			Facilities:   convertToFacilityResponse(venue.Facilities),
 		}
 	}
 
@@ -237,7 +235,7 @@ func (uc *useCase) SearchVenues(ctx context.Context, query string, limit, offset
 			Status:       string(venue.Status),
 			Rating:       venue.Rating,
 			TotalReviews: venue.TotalReviews,
-			Facilities: convertToFacilityResponse(venue.Facilities),
+			Facilities:   convertToFacilityResponse(venue.Facilities),
 		}
 	}
 
@@ -382,20 +380,59 @@ func (uc *useCase) AddReview(ctx context.Context, venueID uuid.UUID, userID uuid
 
 	return nil
 }
-
 func (uc *useCase) GetReviews(ctx context.Context, venueID uuid.UUID, limit, offset int) ([]responses.ReviewResponse, error) {
+	// Input validation
+	if venueID == uuid.Nil {
+		return nil, fmt.Errorf("invalid venue ID")
+	}
+
+	if limit < 0 || offset < 0 {
+		return nil, fmt.Errorf("invalid pagination parameters")
+	}
+
+	// Get reviews
 	reviews, err := uc.venueRepo.GetReviews(ctx, venueID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get reviews: %w", err)
 	}
 
-	user, err := uc.userRepo.GetByID(ctx, reviews[0].UserID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get reviewer: %w", err)
+	// Handle empty results
+	if len(reviews) == 0 {
+		return []responses.ReviewResponse{}, nil
 	}
 
+	// Collect all unique user IDs
+	userIDs := make(map[uuid.UUID]struct{})
+	for _, review := range reviews {
+		userIDs[review.UserID] = struct{}{}
+	}
+
+	// Convert map to slice for batch query
+	uniqueUserIDs := make([]uuid.UUID, 0, len(userIDs))
+	for userID := range userIDs {
+		uniqueUserIDs = append(uniqueUserIDs, userID)
+	}
+
+	// Batch fetch all users
+	users, err := uc.userRepo.GetUsersByIDs(ctx, uniqueUserIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get reviewers: %w", err)
+	}
+
+	// Create user map for efficient lookups
+	userMap := make(map[uuid.UUID]models.User, len(users))
+	for _, user := range users {
+		userMap[user.ID] = user
+	}
+
+	// Build response
 	reviewResponses := make([]responses.ReviewResponse, len(reviews))
 	for i, review := range reviews {
+		user, exists := userMap[review.UserID]
+		if !exists {
+			return nil, fmt.Errorf("user not found for review %s", review.ID)
+		}
+
 		reviewResponses[i] = responses.ReviewResponse{
 			ID:        review.ID.String(),
 			Rating:    review.Rating,
