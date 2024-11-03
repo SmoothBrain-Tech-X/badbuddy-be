@@ -5,19 +5,20 @@ import (
 	"badbuddy/internal/delivery/http/middleware"
 	"badbuddy/internal/usecase/facility"
 	"badbuddy/internal/usecase/venue"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
 
 type VenueHandler struct {
-	venueUseCase venue.UseCase
+	venueUseCase    venue.UseCase
 	facilityUseCase facility.UseCase
 }
 
 func NewVenueHandler(venueUseCase venue.UseCase, facilityUseCase facility.UseCase) *VenueHandler {
 	return &VenueHandler{
-		venueUseCase: venueUseCase,
+		venueUseCase:    venueUseCase,
 		facilityUseCase: facilityUseCase,
 	}
 }
@@ -161,8 +162,17 @@ func (h *VenueHandler) SearchVenues(c *fiber.Ctx) error {
 	query := c.Query("q")
 	limit := c.QueryInt("limit", 10)
 	offset := c.QueryInt("offset", 0)
+	minPrice := c.QueryInt("minPrice", 0)
+	maxPrice := c.QueryInt("maxPrice", 1000)
+	location := c.Query("location", "")
+	facility := c.Query("facility")
+	facilityList := strings.Split(facility, ",")
 
-	venues, err := h.venueUseCase.SearchVenues(c.Context(), query, limit, offset)
+	if facilityList[0] == "" && len(facilityList) == 1 {
+		facilityList = []string{}
+	}
+
+	venues, err := h.venueUseCase.SearchVenues(c.Context(), query, limit, offset, minPrice, maxPrice, location, facilityList)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),

@@ -232,8 +232,8 @@ func (uc *useCase) ListVenues(ctx context.Context, location string, limit, offse
 	return venueResponses, nil
 }
 
-func (uc *useCase) SearchVenues(ctx context.Context, query string, limit, offset int) (responses.VenueResponseDTO, error) {
-	venues, err := uc.venueRepo.Search(ctx, query, limit, offset)
+func (uc *useCase) SearchVenues(ctx context.Context, query string, limit, offset int, minPrice int, maxPrice int, location string, facilities []string) (responses.VenueResponseDTO, error) {
+	venues, err := uc.venueRepo.Search(ctx, query, limit, offset, minPrice, maxPrice, location, facilities)
 	if err != nil {
 		return responses.VenueResponseDTO{}, fmt.Errorf("failed to search venues: %w", err)
 	}
@@ -537,6 +537,7 @@ func convertToModelFacilities(facilities []requests.Facility) []models.Facility 
 	for i, facility := range facilities {
 		modelFacilities[i] = models.Facility{
 			ID: uuid.MustParse(facility.ID),
+			Name: "",
 		}
 	}
 	return modelFacilities
@@ -547,6 +548,7 @@ func convertToFacilityResponse(facilities []models.Facility) []responses.Facilit
 	for i, facility := range facilities {
 		facilityResponses[i] = responses.FacilityResponse{
 			ID: facility.ID.String(),
+			Name: facility.Name,
 		}
 	}
 	return facilityResponses

@@ -14,7 +14,7 @@ type UseCase interface {
 	GetVenue(ctx context.Context, id uuid.UUID) (*responses.VenueResponse, error)
 	UpdateVenue(ctx context.Context, id uuid.UUID, req requests.UpdateVenueRequest) error
 	ListVenues(ctx context.Context, location string, limit, offset int) ([]responses.VenueResponse, error)
-	SearchVenues(ctx context.Context, query string, limit, offset int) (responses.VenueResponseDTO, error)
+	SearchVenues(ctx context.Context, query string, limit, offset int, minPrice int, maxPrice int, location string, facilities []string) (responses.VenueResponseDTO, error)
 	AddCourt(ctx context.Context, venueID uuid.UUID, req requests.CreateCourtRequest) (*responses.CourtResponse, error)
 	UpdateCourt(ctx context.Context, venueID uuid.UUID, req requests.UpdateCourtRequest) error
 	DeleteCourt(ctx context.Context, venueID uuid.UUID, courtID uuid.UUID) error
