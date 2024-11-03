@@ -241,15 +241,37 @@ func (r *userRepository) UpdateLastActive(ctx context.Context, userID uuid.UUID)
 
 	return nil
 }
-
 func (r *userRepository) SearchUsers(ctx context.Context, query string, filters interfaces.UserSearchFilters) ([]models.User, error) {
 	queryBuilder := `
-        SELECT * FROM users
-        WHERE status != $1
-        AND search_vector @@ plainto_tsquery($2)`
+        SELECT 
+            id,
+            email,
+            password,
+            first_name,
+            last_name,
+            phone,
+            play_level,
+            location,
+            bio,
+            avatar_url,
+            status,
+            gender,
+            play_hand,
+            venue_id,
+            created_at,
+            last_active_at
+        FROM users
+        WHERE status != $1`
 
-	args := []interface{}{models.UserStatusInactive, query}
-	argCount := 3
+	args := []interface{}{models.UserStatusInactive}
+	argCount := 2
+
+	// Only add text search if query is not empty
+	if query != "" {
+		queryBuilder += fmt.Sprintf(" AND search_vector @@ plainto_tsquery('english', $%d)", argCount)
+		args = append(args, query)
+		argCount++
+	}
 
 	if filters.PlayLevel != "" {
 		queryBuilder += fmt.Sprintf(" AND play_level = $%d", argCount)
@@ -263,13 +285,23 @@ func (r *userRepository) SearchUsers(ctx context.Context, query string, filters 
 		argCount++
 	}
 
-	// Add ordering
+	// Add ordering with properly numbered parameters
 	queryBuilder += `
         ORDER BY 
-            CASE WHEN last_active_at > NOW() - INTERVAL '7 days' THEN 1 ELSE 0 END DESC,
-            ts_rank(search_vector, plainto_tsquery($2)) DESC,
-            created_at DESC
-        LIMIT $%d OFFSET $%d`
+            CASE WHEN last_active_at > NOW() - INTERVAL '7 days' THEN 1 ELSE 0 END DESC`
+
+	// Only add text search ranking if query is not empty
+	if query != "" {
+		queryBuilder += fmt.Sprintf(`,
+            ts_rank(search_vector, plainto_tsquery('english', $2)) DESC`)
+	}
+
+	queryBuilder += `,
+            created_at DESC`
+
+	// Add limit and offset
+	queryBuilder += fmt.Sprintf(`
+        LIMIT $%d OFFSET $%d`, argCount, argCount+1)
 
 	args = append(args, filters.Limit, filters.Offset)
 
