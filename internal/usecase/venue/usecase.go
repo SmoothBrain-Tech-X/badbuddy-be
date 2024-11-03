@@ -76,7 +76,7 @@ func (uc *useCase) CreateVenue(ctx context.Context, ownerID uuid.UUID, req reque
 		TotalReviews: venue.TotalReviews,
 		Facilities:   convertToFacilityResponse(convertToModelFacilities(req.Facilities)),
 		Rules:        convertToRuleResponse(req.Rules),
-		Courts: 	 []responses.CourtResponse{},
+		Courts:       []responses.CourtResponse{},
 	}, nil
 }
 
@@ -410,20 +410,59 @@ func (uc *useCase) AddReview(ctx context.Context, venueID uuid.UUID, userID uuid
 
 	return nil
 }
-
 func (uc *useCase) GetReviews(ctx context.Context, venueID uuid.UUID, limit, offset int) ([]responses.ReviewResponse, error) {
+	// Input validation
+	if venueID == uuid.Nil {
+		return nil, fmt.Errorf("invalid venue ID")
+	}
+
+	if limit < 0 || offset < 0 {
+		return nil, fmt.Errorf("invalid pagination parameters")
+	}
+
+	// Get reviews
 	reviews, err := uc.venueRepo.GetReviews(ctx, venueID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get reviews: %w", err)
 	}
 
-	user, err := uc.userRepo.GetByID(ctx, reviews[0].UserID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get reviewer: %w", err)
+	// Handle empty results
+	if len(reviews) == 0 {
+		return []responses.ReviewResponse{}, nil
 	}
 
+	// Collect all unique user IDs
+	userIDs := make(map[uuid.UUID]struct{})
+	for _, review := range reviews {
+		userIDs[review.UserID] = struct{}{}
+	}
+
+	// Convert map to slice for batch query
+	uniqueUserIDs := make([]uuid.UUID, 0, len(userIDs))
+	for userID := range userIDs {
+		uniqueUserIDs = append(uniqueUserIDs, userID)
+	}
+
+	// Batch fetch all users
+	users, err := uc.userRepo.GetUsersByIDs(ctx, uniqueUserIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get reviewers: %w", err)
+	}
+
+	// Create user map for efficient lookups
+	userMap := make(map[uuid.UUID]models.User, len(users))
+	for _, user := range users {
+		userMap[user.ID] = user
+	}
+
+	// Build response
 	reviewResponses := make([]responses.ReviewResponse, len(reviews))
 	for i, review := range reviews {
+		user, exists := userMap[review.UserID]
+		if !exists {
+			return nil, fmt.Errorf("user not found for review %s", review.ID)
+		}
+
 		reviewResponses[i] = responses.ReviewResponse{
 			ID:        review.ID.String(),
 			Rating:    review.Rating,
@@ -495,7 +534,7 @@ func convertToModelFacilities(facilities []requests.Facility) []models.Facility 
 	modelFacilities := make([]models.Facility, len(facilities))
 	for i, facility := range facilities {
 		modelFacilities[i] = models.Facility{
-			ID:   uuid.MustParse(facility.ID),
+			ID: uuid.MustParse(facility.ID),
 		}
 	}
 	return modelFacilities
@@ -505,7 +544,7 @@ func convertToFacilityResponse(facilities []models.Facility) []responses.Facilit
 	facilityResponses := make([]responses.FacilityResponse, len(facilities))
 	for i, facility := range facilities {
 		facilityResponses[i] = responses.FacilityResponse{
-			ID:   facility.ID.String(),
+			ID: facility.ID.String(),
 		}
 	}
 	return facilityResponses

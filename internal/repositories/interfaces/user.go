@@ -18,6 +18,7 @@ type UserSearchFilters struct {
 type UserRepository interface {
 	Create(ctx context.Context, user *models.User) error
 	GetByID(ctx context.Context, id uuid.UUID) (*models.User, error)
+	GetUsersByIDs(ctx context.Context, ids []uuid.UUID) ([]models.User, error)
 	GetByEmail(ctx context.Context, email string) (*models.User, error)
 	Update(ctx context.Context, user *models.User) error
 	GetProfile(ctx context.Context, userID uuid.UUID) (*models.UserProfile, error)

@@ -87,6 +87,20 @@ func (r *userRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Use
 	return &user, nil
 }
 
+func (r *userRepository) GetUsersByIDs(ctx context.Context, ids []uuid.UUID) ([]models.User, error) {
+	var users []models.User
+	err := r.db.SelectContext(ctx, &users, `
+		SELECT * FROM users
+		WHERE id = ANY($1) AND status != $2`,
+		ids, models.UserStatusInactive)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get users by ids: %w", err)
+	}
+
+	return users, nil
+}
+
 func (r *userRepository) GetByEmail(ctx context.Context, email string) (*models.User, error) {
 	var user models.User
 	err := r.db.GetContext(ctx, &user, `
