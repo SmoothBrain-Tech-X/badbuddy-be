@@ -8,6 +8,7 @@ import (
 	"badbuddy/internal/usecase/session"
 	"badbuddy/internal/usecase/user"
 	"badbuddy/internal/usecase/venue"
+	"badbuddy/internal/usecase/chat"
 	"fmt"
 	"log"
 	"os"
@@ -59,6 +60,11 @@ func main() {
 	sessionUseCase := session.NewSessionUseCase(sessionRepo, venueRepo)
 	sessionHandler := rest.NewSessionHandler(sessionUseCase)
 	sessionHandler.SetupSessionRoutes(app)
+
+	chatRepo := postgres.NewChatRepository(db)
+	chatUseCase := chat.NewChatUseCase(chatRepo, userRepo)
+	chatHandler := rest.NewChatHandler(chatUseCase)
+	chatHandler.SetupChatRoutes(app)
 
 	//add heatlh check and ready check
 
