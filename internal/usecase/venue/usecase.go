@@ -379,21 +379,23 @@ func (uc *useCase) GetReviews(ctx context.Context, venueID uuid.UUID, limit, off
 	return reviewResponses, nil
 }
 
-func (uc *useCase) GetFacilities(ctx context.Context, venueID uuid.UUID) ([]responses.FacilityResponse, error) {
+func (uc *useCase) GetFacilities(ctx context.Context, venueID uuid.UUID) (*responses.FacilityListResponse, error) {
 	facilities, err := uc.venueRepo.GetFacilities(ctx, venueID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get facilities: %w", err)
 	}
 
 	facilityResponses := make([]responses.FacilityResponse, len(facilities))
-	for i, facility := range facilities {
+	for i := range facilities {
 		facilityResponses[i] = responses.FacilityResponse{
-			ID:          facility.ID.String(),
-			Name:        facility.Name,
+			ID : facilities[i].ID.String(),
+			Name: facilities[i].Name,
 		}
 	}
 
-	return facilityResponses, nil
+	return &responses.FacilityListResponse{
+		Facilities: facilityResponses,
+	}, nil
 }
 
 func convertToOpenRangeResponse(openRanges []requests.OpenRange) []responses.OpenRangeResponse {

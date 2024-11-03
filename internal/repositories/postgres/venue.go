@@ -401,11 +401,18 @@ func (r *venueRepository) UpdateVenueRating(ctx context.Context, venueID uuid.UU
 
 func (r *venueRepository) GetFacilities(ctx context.Context, venueID uuid.UUID) ([]models.Facility, error) {
 	query := `
-		SELECT * FROM venues_facilities 
-		WHERE venue_id = $1`
+		SELECT
+			f.id,
+			f.name
+		FROM
+			venues_facilities vf
+			JOIN facilities f ON vf.facility_id = f.id
+		WHERE
+			venue_id = $1;`
 
 	facilities := []models.Facility{}
 	err := r.db.SelectContext(ctx, &facilities, query, venueID)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to get facilities: %w", err)
 	}

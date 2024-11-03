@@ -51,7 +51,7 @@ func (uc *useCase) ListFacilities(ctx context.Context) (*responses.FacilityListR
 func (uc *useCase) GetFacilityByID(ctx context.Context, id uuid.UUID) (*responses.FacilityResponse, error) {
 	facility, err := uc.facilityRepo.GetFacilityByID(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, ErrFacilityNotFound
 	}
 
 	if facility == nil {
