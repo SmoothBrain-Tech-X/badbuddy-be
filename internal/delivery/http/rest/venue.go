@@ -5,6 +5,7 @@ import (
 	"badbuddy/internal/delivery/http/middleware"
 	"badbuddy/internal/usecase/facility"
 	"badbuddy/internal/usecase/venue"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
@@ -372,9 +373,9 @@ func (h *VenueHandler) GetFacilitiesOfVenue(c *fiber.Ctx) error {
 	return c.JSON(facilities)
 }
 
-func (h *VenueHandler) validateFacilities(facility []string, c *fiber.Ctx) bool {
+func (h *VenueHandler) validateFacilities(facility []requests.Facility, c *fiber.Ctx) bool {
 	for _, f := range facility {
-		facilityID, err := uuid.Parse(f)
+		facilityID, err := uuid.Parse(f.ID)
 		if err != nil {
 			return false
 		}

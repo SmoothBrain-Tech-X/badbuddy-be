@@ -49,7 +49,7 @@ func (uc *useCase) CreateVenue(ctx context.Context, ownerID uuid.UUID, req reque
 
 	facilityUUIDs := make([]uuid.UUID, len(req.Facilities))
 	for i, facility := range req.Facilities {
-		facilityUUID, err := uuid.Parse(facility)
+		facilityUUID, err := uuid.Parse(facility.ID)
 		if err != nil {
 			return nil, fmt.Errorf("invalid facility ID: %w", err)
 		}
@@ -156,7 +156,7 @@ func (uc *useCase) UpdateVenue(ctx context.Context, id uuid.UUID, req requests.U
 
 	facilityUUIDs := make([]uuid.UUID, len(req.Facilities))
 	for i, facility := range req.Facilities {
-		facilityUUID, err := uuid.Parse(facility)
+		facilityUUID, err := uuid.Parse(facility.ID)
 		if err != nil {
 			return fmt.Errorf("invalid facility ID: %w", err)
 		}
