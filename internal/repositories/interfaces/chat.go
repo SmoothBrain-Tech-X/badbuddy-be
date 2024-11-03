@@ -19,4 +19,5 @@ type ChatRepository interface {
 	DeleteChatMessage(ctx context.Context, messageID uuid.UUID) error
 	UpdateChatMessageReadStatus(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) error
 	GetMessageByID(ctx context.Context, messageID uuid.UUID) (*models.Message, error) // Get a message by ID
+	IsUserIsSender(ctx context.Context, userID, messageID uuid.UUID) (bool, error)
 }

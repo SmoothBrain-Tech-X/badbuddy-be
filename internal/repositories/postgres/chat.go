@@ -224,3 +224,16 @@ func (r *chatRepository) UpdateChatMessageReadStatus(ctx context.Context, chatID
 
 	return nil
 }
+
+func (r *chatRepository) IsUserIsSender(ctx context.Context, userID, messageID uuid.UUID) (bool, error) {
+	var count int
+
+	query := `SELECT COUNT(*) FROM chat_messages WHERE sender_id = $1 AND id = $2`
+
+	err := r.db.GetContext(ctx, &count, query, userID, messageID)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}

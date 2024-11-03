@@ -137,6 +137,14 @@ func (uc *useCase) SendMessage(ctx context.Context, userID, chatID uuid.UUID, re
 }
 
 func (uc *useCase) DeleteMessage(ctx context.Context, chatID, messageID, userID uuid.UUID) error {
+	isUserIsSerder, err := uc.chatRepo.IsUserIsSender(ctx, userID, messageID)
+	if err != nil {
+		return err
+	}
+	if !isUserIsSerder {
+		return ErrUnauthorized
+	}
+
 	isPartOfChat, err := uc.chatRepo.IsUserPartOfChat(ctx, userID, chatID)
 	if err != nil {
 		return err
@@ -167,6 +175,14 @@ func (uc *useCase) DeleteMessage(ctx context.Context, chatID, messageID, userID 
 }
 
 func (uc *useCase) UpdateMessage(ctx context.Context, chatID, messageID, userID uuid.UUID, req requests.SendAndUpdateMessageRequest) error {
+	isUserIsSerder, err := uc.chatRepo.IsUserIsSender(ctx, userID, messageID)
+	if err != nil {
+		return err
+	}
+	if !isUserIsSerder {
+		return ErrUnauthorized
+	}
+
 	isPartOfChat, err := uc.chatRepo.IsUserPartOfChat(ctx, userID, chatID)
 	if err != nil {
 		return err
