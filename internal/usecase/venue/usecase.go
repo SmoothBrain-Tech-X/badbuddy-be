@@ -125,7 +125,11 @@ func (uc *useCase) UpdateVenue(ctx context.Context, id uuid.UUID, req requests.U
 		venue.Email = req.Email
 	}
 	if req.OpenRange != nil {
-		venue.OpenRange = models.NullRawMessage{RawMessage: mustMarshalJSON(req.OpenRange)}
+		openRangeJSON, err := json.Marshal(req.OpenRange)
+		if err != nil {
+			return fmt.Errorf("failed to marshal open range: %w", err)
+		}
+		venue.OpenRange.RawMessage = openRangeJSON
 	}
 	if req.ImageURLs != "" {
 		venue.ImageURLs = req.ImageURLs
@@ -133,9 +137,7 @@ func (uc *useCase) UpdateVenue(ctx context.Context, id uuid.UUID, req requests.U
 	if req.Status != "" {
 		venue.Status = models.VenueStatus(req.Status)
 	}
-
 	venue.UpdatedAt = time.Now()
-
 	if err := uc.venueRepo.Update(ctx, &venue.Venue); err != nil {
 		return fmt.Errorf("failed to update venue: %w", err)
 	}
@@ -377,11 +379,29 @@ func (uc *useCase) GetReviews(ctx context.Context, venueID uuid.UUID, limit, off
 	return reviewResponses, nil
 }
 
+func (uc *useCase) GetFacilities(ctx context.Context, venueID uuid.UUID) ([]responses.FacilityResponse, error) {
+	facilities, err := uc.venueRepo.GetFacilities(ctx, venueID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get facilities: %w", err)
+	}
+
+	facilityResponses := make([]responses.FacilityResponse, len(facilities))
+	for i, facility := range facilities {
+		facilityResponses[i] = responses.FacilityResponse{
+			ID:          facility.ID.String(),
+			Name:        facility.Name,
+		}
+	}
+
+	return facilityResponses, nil
+}
+
 func convertToOpenRangeResponse(openRanges []requests.OpenRange) []responses.OpenRangeResponse {
 	var openRangeResponses []responses.OpenRangeResponse
 	for _, openRange := range openRanges {
 		openRangeResponses = append(openRangeResponses, responses.OpenRangeResponse{
 			Day:       openRange.Day,
+			IsOpen:    openRange.IsOpen,
 			OpenTime:  openRange.OpenTime,
 			CloseTime: openRange.CloseTime,
 		})

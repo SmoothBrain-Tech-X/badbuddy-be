@@ -7,6 +7,7 @@ import (
 	"badbuddy/internal/infrastructure/server"
 	"badbuddy/internal/repositories/postgres"
 	"badbuddy/internal/usecase/chat"
+	"badbuddy/internal/usecase/facility"
 	"badbuddy/internal/usecase/session"
 	"badbuddy/internal/usecase/user"
 	"badbuddy/internal/usecase/venue"
@@ -68,6 +69,11 @@ func main() {
 	chatUseCase := chat.NewChatUseCase(chatRepo, userRepo)
 	chatHandler := rest.NewChatHandler(chatUseCase, chatHub)
 	chatHandler.SetupChatRoutes(app)
+
+	facilityRepo := postgres.NewFacilityRepository(db)
+	facilityUseCase := facility.NewFacilityUseCase(facilityRepo)
+	facilityHandler := rest.NewFacilityHandler(facilityUseCase, userUseCase)
+	facilityHandler.SetupFacilityRoutes(app)
 
 	app.Get("/ws/:chat_id", ws.ChatWebSocketHandler(chatHub))
 

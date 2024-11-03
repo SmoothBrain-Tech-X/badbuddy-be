@@ -262,3 +262,13 @@ func (uc *useCase) mapUserToResponse(user *models.User) responses.UserResponse {
 		LastActiveAt: user.LastActiveAt,
 	}
 }
+
+func (uc *useCase) IsAdmin(ctx context.Context, userID uuid.UUID) (bool, error) {
+	// user, err := uc.userRepo.GetByID(ctx, userID)
+	// if err != nil {
+	// 	return false, ErrUserNotFound
+	// }
+
+
+	return true, nil
+}

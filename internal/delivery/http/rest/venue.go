@@ -27,6 +27,7 @@ func (h *VenueHandler) SetupVenueRoutes(app *fiber.App) {
 	venueGroup.Get("/search", h.SearchVenues)
 	venueGroup.Get("/:id", h.GetVenue)
 	venueGroup.Get("/:id/reviews", h.GetReviews)
+	venueGroup.Get("/:id/facilities", h.GetFacilities)
 
 	// Protected routes
 	venueGroup.Use(middleware.AuthRequired())
@@ -273,4 +274,22 @@ func (h *VenueHandler) AddReview(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"message": "Review added successfully",
 	})
+}
+
+func (h *VenueHandler) GetFacilities(c *fiber.Ctx) error {
+	venueID, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid venue ID",
+		})
+	}
+
+	facilities, err := h.venueUseCase.GetFacilities(c.Context(), venueID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(facilities)
 }
