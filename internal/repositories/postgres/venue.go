@@ -43,26 +43,26 @@ func (r *venueRepository) Create(ctx context.Context, venue *models.Venue) error
 		return fmt.Errorf("venue with name '%s' already exists", venue.Name)
 	}
 
-	venueInsert := models.VenueInsert {
-			ID: venue.ID,
-			Name: venue.Name,
-			Description: venue.Description,
-			Address: venue.Address,
-			Location: venue.Location,
-			Phone: venue.Phone,
-			Email: venue.Email,
-			OpenRange: venue.OpenRange.RawMessage,
-			ImageURLs: venue.ImageURLs,
-			Status: venue.Status,
-			Rating: venue.Rating,
-			TotalReviews: venue.TotalReviews,
-			OwnerID: venue.OwnerID,
-			CreatedAt: venue.CreatedAt,
-			UpdatedAt: venue.UpdatedAt,
-			DeletedAt: venue.DeletedAt,
-			Search_vector: venue.Search_vector,
-			Rules: venue.Rules.RawMessage,
-			Facilities: venue.Facilities,
+	venueInsert := models.VenueInsert{
+		ID:            venue.ID,
+		Name:          venue.Name,
+		Description:   venue.Description,
+		Address:       venue.Address,
+		Location:      venue.Location,
+		Phone:         venue.Phone,
+		Email:         venue.Email,
+		OpenRange:     venue.OpenRange.RawMessage,
+		ImageURLs:     venue.ImageURLs,
+		Status:        venue.Status,
+		Rating:        venue.Rating,
+		TotalReviews:  venue.TotalReviews,
+		OwnerID:       venue.OwnerID,
+		CreatedAt:     venue.CreatedAt,
+		UpdatedAt:     venue.UpdatedAt,
+		DeletedAt:     venue.DeletedAt,
+		Search_vector: venue.Search_vector,
+		Rules:         venue.Rules.RawMessage,
+		Facilities:    venue.Facilities,
 	}
 
 	// If no duplicate, proceed with insert
@@ -178,7 +178,7 @@ func (r *venueRepository) Update(ctx context.Context, venue *models.Venue) error
 			open_range = :open_range,
 			image_urls = :image_urls,
 			status = :status,
-			updated_at = :updated_at
+			updated_at = :updated_at,
 			rules = :rules
 		WHERE id = :id AND deleted_at IS NULL`
 
@@ -342,7 +342,7 @@ func (r *venueRepository) Search(ctx context.Context, query string, limit, offse
 			&venue.Phone, &venue.Email, &venue.OpenRange, &venue.ImageURLs,
 			&venue.Status, &venue.Rating, &venue.TotalReviews, &venue.OwnerID,
 			&venue.CreatedAt, &venue.UpdatedAt, &venue.Search_vector, &venue.Rules,
-			&facilitiesJSON, 
+			&facilitiesJSON,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan venue: %w", err)
@@ -363,7 +363,6 @@ func (r *venueRepository) Search(ctx context.Context, query string, limit, offse
 
 	return venues, nil
 }
-
 
 func (r *venueRepository) AddCourt(ctx context.Context, court *models.Court) error {
 	query := `
