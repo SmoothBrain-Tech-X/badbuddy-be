@@ -107,6 +107,27 @@ type Venue struct {
 	Rules         NullRawMessage `db:"rules"`
 	Facilities    []Facility     `db:"facilities"`
 }
+type VenueInsert struct {
+	ID            uuid.UUID   `db:"id"`
+	Name          string      `db:"name"`
+	Description   string      `db:"description"`
+	Address       string      `db:"address"`
+	Location      string      `db:"location"`
+	Phone         string      `db:"phone"`
+	Email         string      `db:"email"`
+	OpenRange     []byte      `db:"open_range"`
+	ImageURLs     string      `db:"image_urls"`
+	Status        VenueStatus `db:"status"`
+	Rating        float64     `db:"rating"`
+	TotalReviews  int         `db:"total_reviews"`
+	OwnerID       uuid.UUID   `db:"owner_id"`
+	CreatedAt     time.Time   `db:"created_at"`
+	UpdatedAt     time.Time   `db:"updated_at"`
+	DeletedAt     *time.Time  `db:"deleted_at"`
+	Search_vector string      `db:"search_vector"`
+	Rules         []byte      `db:"rules"`
+	Facilities    []Facility  `db:"facilities"`
+}
 
 type Court struct {
 	ID           uuid.UUID   `db:"id"`

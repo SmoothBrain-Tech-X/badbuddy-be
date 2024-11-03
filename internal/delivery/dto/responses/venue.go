@@ -25,6 +25,7 @@ type VenueResponse struct {
 	TotalReviews int                 `json:"total_reviews"`
 	Courts       []CourtResponse     `json:"courts"`
 	Facilities   []FacilityResponse  `json:"facilities"`
+	Rules        []string            `json:"rules"`
 }
 
 type OpenRangeResponse struct {

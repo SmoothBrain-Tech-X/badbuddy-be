@@ -36,6 +36,7 @@ func (uc *useCase) CreateVenue(ctx context.Context, ownerID uuid.UUID, req reque
 		Phone:       req.Phone,
 		Email:       req.Email,
 		OpenRange:   models.NullRawMessage{RawMessage: mustMarshalJSON(req.OpenRange)},
+		Rules:       models.NullRawMessage{RawMessage: mustMarshalJSON(req.Rules)},
 		ImageURLs:   req.ImageURLs,
 		Status:      models.VenueStatusActive,
 		OwnerID:     ownerID,
@@ -73,7 +74,7 @@ func (uc *useCase) CreateVenue(ctx context.Context, ownerID uuid.UUID, req reque
 		Status:       string(venue.Status),
 		Rating:       venue.Rating,
 		TotalReviews: venue.TotalReviews,
-		Facilities: convertToFacilityResponse(venue.Facilities),
+		Facilities:   convertToFacilityResponse(venue.Facilities),
 	}, nil
 }
 
@@ -98,6 +99,11 @@ func (uc *useCase) GetVenue(ctx context.Context, id uuid.UUID) (*responses.Venue
 	if unMarshalJSON(venueWithCourts.OpenRange.RawMessage, &openRange) != nil {
 		return nil, fmt.Errorf("error decoding enroll response: %v", err)
 	}
+	rules := []string{}
+	if unMarshalJSON(venueWithCourts.Rules.RawMessage, &rules) != nil {
+		return nil, fmt.Errorf("error decoding enroll response: %v", err)
+	}
+
 	return &responses.VenueResponse{
 		ID:           venueWithCourts.ID.String(),
 		Name:         venueWithCourts.Name,
@@ -112,8 +118,8 @@ func (uc *useCase) GetVenue(ctx context.Context, id uuid.UUID) (*responses.Venue
 		Rating:       venueWithCourts.Rating,
 		TotalReviews: venueWithCourts.TotalReviews,
 		Courts:       courts,
-		Facilities: convertToFacilityResponse(venueWithCourts.Facilities),
-		
+		Facilities:   convertToFacilityResponse(venueWithCourts.Facilities),
+		Rules:        rules,
 	}, nil
 }
 
@@ -153,6 +159,13 @@ func (uc *useCase) UpdateVenue(ctx context.Context, id uuid.UUID, req requests.U
 	if req.Status != "" {
 		venue.Status = models.VenueStatus(req.Status)
 	}
+	if req.Rules != nil {
+		rulesJSON, err := json.Marshal(req.Rules)
+		if err != nil {
+			return fmt.Errorf("failed to marshal rules: %w", err)
+		}
+		venue.Rules.RawMessage = rulesJSON
+	}
 
 	facilityUUIDs := make([]uuid.UUID, len(req.Facilities))
 	for i, facility := range req.Facilities {
@@ -166,7 +179,6 @@ func (uc *useCase) UpdateVenue(ctx context.Context, id uuid.UUID, req requests.U
 	if err := uc.venueRepo.UpdateFacilities(ctx, venue.ID, facilityUUIDs); err != nil {
 		return fmt.Errorf("failed to update facilities: %w", err)
 	}
-
 
 	venue.UpdatedAt = time.Now()
 	if err := uc.venueRepo.Update(ctx, &venue.Venue); err != nil {
@@ -190,6 +202,12 @@ func (uc *useCase) ListVenues(ctx context.Context, location string, limit, offse
 		if unMarshalJSON(json.RawMessage(venue.OpenRange.RawMessage), &openRange) != nil {
 			return nil, fmt.Errorf("error decoding enroll response: %v", err)
 		}
+
+		rules := []string{}
+		if unMarshalJSON(json.RawMessage(venue.Rules.RawMessage), &rules) != nil {
+			return nil, fmt.Errorf("error decoding enroll response: %v", err)
+		}
+
 		venueResponses[i] = responses.VenueResponse{
 			ID:           venue.ID.String(),
 			Name:         venue.Name,
@@ -203,7 +221,8 @@ func (uc *useCase) ListVenues(ctx context.Context, location string, limit, offse
 			Status:       string(venue.Status),
 			Rating:       venue.Rating,
 			TotalReviews: venue.TotalReviews,
-			Facilities: convertToFacilityResponse(venue.Facilities),
+			Facilities:   convertToFacilityResponse(venue.Facilities),
+			Rules:        rules,
 		}
 	}
 
@@ -237,7 +256,14 @@ func (uc *useCase) SearchVenues(ctx context.Context, query string, limit, offset
 			Status:       string(venue.Status),
 			Rating:       venue.Rating,
 			TotalReviews: venue.TotalReviews,
-			Facilities: convertToFacilityResponse(venue.Facilities),
+			Facilities:   convertToFacilityResponse(venue.Facilities),
+			Rules: func() []string {
+				var rules []string
+				if err := unMarshalJSON(venue.Rules.RawMessage, &rules); err != nil {
+					return nil
+				}
+				return rules
+			}(),
 		}
 	}
 
