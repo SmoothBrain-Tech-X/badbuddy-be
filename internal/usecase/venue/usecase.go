@@ -74,7 +74,9 @@ func (uc *useCase) CreateVenue(ctx context.Context, ownerID uuid.UUID, req reque
 		Status:       string(venue.Status),
 		Rating:       venue.Rating,
 		TotalReviews: venue.TotalReviews,
-		Facilities:   convertToFacilityResponse(venue.Facilities),
+		Facilities:   convertToFacilityResponse(convertToModelFacilities(req.Facilities)),
+		Rules:        convertToRuleResponse(req.Rules),
+		Courts: 	 []responses.CourtResponse{},
 	}, nil
 }
 
@@ -479,12 +481,31 @@ func convertToOpenRangeResponse(openRanges []requests.OpenRange) []responses.Ope
 	return openRangeResponses
 }
 
+func convertToRuleResponse(rules []requests.Rule) []responses.RuleResponse {
+	ruleResponses := make([]responses.RuleResponse, len(rules))
+	for i, rule := range rules {
+		ruleResponses[i] = responses.RuleResponse{
+			Rule: rule.Rule,
+		}
+	}
+	return ruleResponses
+}
+
+func convertToModelFacilities(facilities []requests.Facility) []models.Facility {
+	modelFacilities := make([]models.Facility, len(facilities))
+	for i, facility := range facilities {
+		modelFacilities[i] = models.Facility{
+			ID:   uuid.MustParse(facility.ID),
+		}
+	}
+	return modelFacilities
+}
+
 func convertToFacilityResponse(facilities []models.Facility) []responses.FacilityResponse {
 	facilityResponses := make([]responses.FacilityResponse, len(facilities))
 	for i, facility := range facilities {
 		facilityResponses[i] = responses.FacilityResponse{
 			ID:   facility.ID.String(),
-			Name: facility.Name,
 		}
 	}
 	return facilityResponses

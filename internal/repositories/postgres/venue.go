@@ -164,6 +164,7 @@ func (r *venueRepository) Update(ctx context.Context, venue *models.Venue) error
 		"image_urls":  venue.ImageURLs,
 		"status":      venue.Status,
 		"updated_at":  venue.UpdatedAt,
+		"rules":       venue.Rules.RawMessage,
 	}
 
 	query := `
@@ -178,6 +179,7 @@ func (r *venueRepository) Update(ctx context.Context, venue *models.Venue) error
 			image_urls = :image_urls,
 			status = :status,
 			updated_at = :updated_at
+			rules = :rules
 		WHERE id = :id AND deleted_at IS NULL`
 
 	result, err := r.db.NamedExecContext(ctx, query, params)
