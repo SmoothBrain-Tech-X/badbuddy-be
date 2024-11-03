@@ -119,6 +119,14 @@ func (h *UserHandler) SearchUsers(c *fiber.Ctx) error {
 		Offset: c.QueryInt("offset", 0),
 	}
 
+	if filters.Limit <= 0 || filters.Limit > 100 {
+		filters.Limit = 10
+	}
+
+	if filters.Offset < 0 {
+		filters.Offset = 0
+	}
+
 	users, err := h.userUseCase.SearchUsers(c.Context(), query, filters)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

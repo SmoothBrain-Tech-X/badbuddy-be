@@ -3,8 +3,10 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
+	"badbuddy/internal/delivery/dto/responses"
 	"badbuddy/internal/domain/models"
 	"badbuddy/internal/repositories/interfaces"
 
@@ -21,19 +23,33 @@ func NewBookingRepository(db *sqlx.DB) interfaces.BookingRepository {
 }
 
 func (r *bookingRepository) Create(ctx context.Context, booking *models.CourtBooking) error {
-	query := `
-		INSERT INTO court_bookings (
-			id, court_id, user_id, booking_date, start_time, end_time,
-			total_amount, status, notes, created_at, updated_at
-		) VALUES (
-			:id, :court_id, :user_id, :booking_date, :start_time, :end_time,
-			:total_amount, :status, :notes, :created_at, :updated_at
-		)`
+	// First check availability
+	isAvailable, err := r.CheckCourtAvailability(
+		ctx,
+		booking.CourtID,
+		booking.Date,
+		booking.StartTime,
+		booking.EndTime,
+	)
+	if err != nil {
+		return fmt.Errorf("error checking availability: %w", err)
+	}
+	if !isAvailable {
+		return fmt.Errorf("court is not available for the requested time")
+	}
 
-	_, err := r.db.NamedExecContext(ctx, query, booking)
+	query := `
+        INSERT INTO court_bookings (
+            id, court_id, user_id, booking_date, start_time, end_time,
+            total_amount, status, notes, created_at, updated_at
+        ) VALUES (
+            :id, :court_id, :user_id, :booking_date, :start_time, :end_time,
+            :total_amount, :status, :notes, :created_at, :updated_at
+        )`
+
+	_, err = r.db.NamedExecContext(ctx, query, booking)
 	return err
 }
-
 func (r *bookingRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.CourtBooking, error) {
 	query := `
 		SELECT 
@@ -268,25 +284,68 @@ func (r *bookingRepository) GetCourtBookings(ctx context.Context, courtID uuid.U
 }
 
 func (r *bookingRepository) CheckCourtAvailability(ctx context.Context, courtID uuid.UUID, date time.Time, startTime, endTime time.Time) (bool, error) {
-	query := `
-		SELECT COUNT(*)
-		FROM court_bookings
-		WHERE court_id = $1 
-		AND booking_date = $2
-		AND status != 'cancelled'
-		AND (
-			(start_time <= $3 AND end_time > $3)
-			OR (start_time < $4 AND end_time >= $4)
-			OR (start_time >= $3 AND end_time <= $4)
-		)`
+	// First check if any existing bookings conflict
+	bookingQuery := `
+        SELECT COUNT(*)
+        FROM court_bookings
+        WHERE court_id = $1 
+        AND booking_date = $2
+        AND status != 'cancelled'
+        AND (
+            (start_time <= $3 AND end_time > $3)
+            OR (start_time < $4 AND end_time >= $4)
+            OR (start_time >= $3 AND end_time <= $4)
+        )`
 
-	var count int
-	err := r.db.GetContext(ctx, &count, query, courtID, date, startTime, endTime)
-	if err != nil {
+	var bookingCount int
+	if err := r.db.GetContext(ctx, &bookingCount, bookingQuery, courtID, date, startTime, endTime); err != nil {
 		return false, err
 	}
 
-	return count == 0, nil
+	if bookingCount > 0 {
+		return false, nil
+	}
+
+	// Then check if the venue is open during the requested time
+	venueQuery := `
+        SELECT v.open_range
+        FROM courts c
+        JOIN venues v ON v.id = c.venue_id
+        WHERE c.id = $1`
+
+	var openRange []responses.OpenRangeResponse
+	if err := r.db.GetContext(ctx, &openRange, venueQuery, courtID); err != nil {
+		return false, err
+	}
+
+	// Get the day of week for the booking date
+	dayOfWeek := strings.ToLower(date.Weekday().String())
+
+	// Check if the requested time falls within venue operating hours
+	for _, schedule := range openRange {
+		if schedule.Day == dayOfWeek {
+			// Convert schedule times to same date as booking for comparison
+			scheduleOpen := time.Date(
+				startTime.Year(), startTime.Month(), startTime.Day(),
+				schedule.OpenTime.Hour(), schedule.OpenTime.Minute(), 0, 0,
+				startTime.Location(),
+			)
+			scheduleClose := time.Date(
+				startTime.Year(), startTime.Month(), startTime.Day(),
+				schedule.CloseTime.Hour(), schedule.CloseTime.Minute(), 0, 0,
+				startTime.Location(),
+			)
+
+			// Check if booking time falls within operating hours
+			if startTime.Before(scheduleOpen) || endTime.After(scheduleClose) {
+				return false, nil
+			}
+			return true, nil
+		}
+	}
+
+	// If we didn't find the day in the schedule, venue is closed
+	return false, nil
 }
 
 func (r *bookingRepository) CancelBooking(ctx context.Context, id uuid.UUID) error {

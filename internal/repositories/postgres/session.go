@@ -225,38 +225,74 @@ func (r *sessionRepository) List(ctx context.Context, filters map[string]interfa
 	err := r.db.SelectContext(ctx, &sessions, query, args...)
 	return sessions, err
 }
+func (r *sessionRepository) Search(ctx context.Context, searchQuery string, filters map[string]interface{}, limit, offset int) ([]models.SessionDetail, error) {
+	conditions := []string{}
+	args := []interface{}{searchQuery} // First argument ($1) is always the search query
+	argIndex := 2                      // Start from $2 for filter conditions
 
-func (r *sessionRepository) Search(ctx context.Context, query string, limit, offset int) ([]models.SessionDetail, error) {
-	queryBuilder := `
-	SELECT
-    ps.*,
-    v.name as venue_name,
-    v.location as venue_location,
-    u.first_name || ' ' || u.last_name as host_name,
-    u.play_level as host_level,
-    COUNT(sp.id) FILTER (WHERE sp.status = 'confirmed') as confirmed_players
-FROM play_sessions ps
-JOIN venues v ON v.id = ps.venue_id
-JOIN users u ON u.id = ps.host_id
-LEFT JOIN session_participants sp ON sp.session_id = ps.id
-WHERE 
-    -- Use full-text search for play_sessions fields
-    ps.search_vector @@ plainto_tsquery('english', $1)
-    -- Use ILIKE for venue and user fields since they don't have tsvector
-    OR v.name ILIKE '%' || $1 || '%'
-    OR v.location ILIKE '%' || $1 || '%'
-    OR u.first_name ILIKE '%' || $1 || '%'
-    OR u.last_name ILIKE '%' || $1 || '%'
-GROUP BY ps.id, v.name, v.location, u.first_name, u.last_name, u.play_level
-ORDER BY 
-    -- Add relevance ranking when using full-text search
-    ts_rank(ps.search_vector, plainto_tsquery('english', $1)) DESC,
-    ps.session_date ASC,
-    ps.start_time ASC
-LIMIT $2 OFFSET $3
-`
+	conditions = append(conditions, `(
+		ps.search_vector @@ plainto_tsquery('english', $1)
+		OR v.name ILIKE '%' || $1 || '%'
+		OR v.location ILIKE '%' || $1 || '%'
+		OR u.first_name ILIKE '%' || $1 || '%'
+		OR u.last_name ILIKE '%' || $1 || '%'
+	)`)
+
+	// Add filter conditions
+	for key, value := range filters {
+		switch key {
+		case "date":
+			conditions = append(conditions, fmt.Sprintf("ps.session_date = $%d", argIndex))
+			args = append(args, value)
+			argIndex++
+		case "location":
+			conditions = append(conditions, fmt.Sprintf("v.location = $%d", argIndex))
+			args = append(args, value)
+			argIndex++
+		case "player_level":
+			conditions = append(conditions, fmt.Sprintf("ps.player_level = $%d", argIndex))
+			args = append(args, value)
+			argIndex++
+		case "status":
+			conditions = append(conditions, fmt.Sprintf("ps.status = $%d", argIndex))
+			args = append(args, value)
+			argIndex++
+		}
+	}
+
+	// Add limit and offset to args
+	args = append(args, limit, offset)
+
+	query := fmt.Sprintf(`
+		SELECT 
+			ps.*,
+			v.name as venue_name,
+			v.location as venue_location,
+			u.first_name || ' ' || u.last_name as host_name,
+			u.play_level as host_level,
+			COUNT(sp.id) FILTER (WHERE sp.status = 'confirmed') as confirmed_players
+		FROM play_sessions ps
+		JOIN venues v ON v.id = ps.venue_id
+		JOIN users u ON u.id = ps.host_id
+		LEFT JOIN session_participants sp ON sp.session_id = ps.id
+		WHERE %s
+		GROUP BY ps.id, v.name, v.location, u.first_name, u.last_name, u.play_level
+		ORDER BY 
+			CASE 
+				WHEN ps.search_vector @@ plainto_tsquery('english', $1) 
+				THEN ts_rank(ps.search_vector, plainto_tsquery('english', $1))
+				ELSE 0
+			END DESC,
+			ps.session_date ASC,
+			ps.start_time ASC
+		LIMIT $%d OFFSET $%d`,
+		strings.Join(conditions, " AND "),
+		argIndex,
+		argIndex+1,
+	)
+
 	sessions := []models.SessionDetail{}
-	err := r.db.SelectContext(ctx, &sessions, queryBuilder, query, limit, offset)
+	err := r.db.SelectContext(ctx, &sessions, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search sessions: %w", err)
 	}
