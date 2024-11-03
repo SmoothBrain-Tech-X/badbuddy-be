@@ -43,22 +43,44 @@ func (r *venueRepository) Create(ctx context.Context, venue *models.Venue) error
 		return fmt.Errorf("venue with name '%s' already exists", venue.Name)
 	}
 
+	venueInsert := models.VenueInsert {
+			ID: venue.ID,
+			Name: venue.Name,
+			Description: venue.Description,
+			Address: venue.Address,
+			Location: venue.Location,
+			Phone: venue.Phone,
+			Email: venue.Email,
+			OpenRange: venue.OpenRange.RawMessage,
+			ImageURLs: venue.ImageURLs,
+			Status: venue.Status,
+			Rating: venue.Rating,
+			TotalReviews: venue.TotalReviews,
+			OwnerID: venue.OwnerID,
+			CreatedAt: venue.CreatedAt,
+			UpdatedAt: venue.UpdatedAt,
+			DeletedAt: venue.DeletedAt,
+			Search_vector: venue.Search_vector,
+			Rules: venue.Rules.RawMessage,
+			Facilities: venue.Facilities,
+	}
+
 	// If no duplicate, proceed with insert
 	insertQuery := `
         INSERT INTO venues (
             id, name, description, address, location, phone, email,
             open_range, image_urls, status, rating,
-            total_reviews, owner_id, created_at, updated_at
+            total_reviews, owner_id, created_at, updated_at, rules
         ) VALUES (
             safe_generate_uuid(), :name, :description, :address, :location, :phone, :email,
             :open_range, :image_urls, :status, :rating,
-            :total_reviews, :owner_id, :created_at, :updated_at
+            :total_reviews, :owner_id, :created_at, :updated_at, :rules
         )
         RETURNING *
     `
 
 	// Use NamedQueryRow instead of NamedExec to get the returned values
-	rows, err := r.db.NamedQueryContext(ctx, insertQuery, venue)
+	rows, err := r.db.NamedQueryContext(ctx, insertQuery, venueInsert)
 	if err != nil {
 		return fmt.Errorf("failed to create venue: %w", err)
 	}
@@ -142,6 +164,7 @@ func (r *venueRepository) Update(ctx context.Context, venue *models.Venue) error
 		"image_urls":  venue.ImageURLs,
 		"status":      venue.Status,
 		"updated_at":  venue.UpdatedAt,
+		"rules":       venue.Rules.RawMessage,
 	}
 
 	query := `
@@ -156,6 +179,7 @@ func (r *venueRepository) Update(ctx context.Context, venue *models.Venue) error
 			image_urls = :image_urls,
 			status = :status,
 			updated_at = :updated_at
+			rules = :rules
 		WHERE id = :id AND deleted_at IS NULL`
 
 	result, err := r.db.NamedExecContext(ctx, query, params)
@@ -203,7 +227,7 @@ func (r *venueRepository) List(ctx context.Context, location string, limit, offs
 		SELECT 
 			v.id, v.name, v.description, v.address, v.location, v.phone, v.email,
 			v.open_range, v.image_urls, v.status, v.rating, v.total_reviews, v.owner_id,
-			v.created_at, v.updated_at, v.search_vector,
+			v.created_at, v.updated_at, v.search_vector, v.rules,
 			COALESCE(json_agg(
 				json_build_object('id', f.id, 'name', f.name)
 			) FILTER (WHERE f.id IS NOT NULL), '[]') AS facilities
@@ -237,7 +261,7 @@ func (r *venueRepository) List(ctx context.Context, location string, limit, offs
 			&venue.ID, &venue.Name, &venue.Description, &venue.Address, &venue.Location,
 			&venue.Phone, &venue.Email, &venue.OpenRange, &venue.ImageURLs,
 			&venue.Status, &venue.Rating, &venue.TotalReviews, &venue.OwnerID,
-			&venue.CreatedAt, &venue.UpdatedAt, &venue.Search_vector,
+			&venue.CreatedAt, &venue.UpdatedAt, &venue.Search_vector, &venue.Rules,
 			&facilitiesJSON,
 		)
 		if err != nil {
@@ -278,7 +302,7 @@ func (r *venueRepository) Search(ctx context.Context, query string, limit, offse
 		SELECT 
 			v.id, v.name, v.description, v.address, v.location, v.phone, v.email,
 			v.open_range, v.image_urls, v.status, v.rating, v.total_reviews, v.owner_id,
-			v.created_at, v.updated_at, v.search_vector,
+			v.created_at, v.updated_at, v.search_vector, v.rules,
 			COALESCE(json_agg(
 				json_build_object('id', f.id, 'name', f.name)
 			) FILTER (WHERE f.id IS NOT NULL), '[]') AS facilities
@@ -317,8 +341,8 @@ func (r *venueRepository) Search(ctx context.Context, query string, limit, offse
 			&venue.ID, &venue.Name, &venue.Description, &venue.Address, &venue.Location,
 			&venue.Phone, &venue.Email, &venue.OpenRange, &venue.ImageURLs,
 			&venue.Status, &venue.Rating, &venue.TotalReviews, &venue.OwnerID,
-			&venue.CreatedAt, &venue.UpdatedAt, &venue.Search_vector,
-			&facilitiesJSON,
+			&venue.CreatedAt, &venue.UpdatedAt, &venue.Search_vector, &venue.Rules,
+			&facilitiesJSON, 
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan venue: %w", err)

@@ -36,6 +36,7 @@ func (uc *useCase) CreateVenue(ctx context.Context, ownerID uuid.UUID, req reque
 		Phone:       req.Phone,
 		Email:       req.Email,
 		OpenRange:   models.NullRawMessage{RawMessage: mustMarshalJSON(req.OpenRange)},
+		Rules:       models.NullRawMessage{RawMessage: mustMarshalJSON(req.Rules)},
 		ImageURLs:   req.ImageURLs,
 		Status:      models.VenueStatusActive,
 		OwnerID:     ownerID,
@@ -73,7 +74,9 @@ func (uc *useCase) CreateVenue(ctx context.Context, ownerID uuid.UUID, req reque
 		Status:       string(venue.Status),
 		Rating:       venue.Rating,
 		TotalReviews: venue.TotalReviews,
-		Facilities:   convertToFacilityResponse(venue.Facilities),
+		Facilities:   convertToFacilityResponse(convertToModelFacilities(req.Facilities)),
+		Rules:        convertToRuleResponse(req.Rules),
+		Courts:       []responses.CourtResponse{},
 	}, nil
 }
 
@@ -98,6 +101,11 @@ func (uc *useCase) GetVenue(ctx context.Context, id uuid.UUID) (*responses.Venue
 	if unMarshalJSON(venueWithCourts.OpenRange.RawMessage, &openRange) != nil {
 		return nil, fmt.Errorf("error decoding enroll response: %v", err)
 	}
+	rules := []responses.RuleResponse{}
+	if unMarshalJSON(venueWithCourts.Rules.RawMessage, &rules) != nil {
+		return nil, fmt.Errorf("error decoding enroll response: %v", err)
+	}
+
 	return &responses.VenueResponse{
 		ID:           venueWithCourts.ID.String(),
 		Name:         venueWithCourts.Name,
@@ -113,6 +121,7 @@ func (uc *useCase) GetVenue(ctx context.Context, id uuid.UUID) (*responses.Venue
 		TotalReviews: venueWithCourts.TotalReviews,
 		Courts:       courts,
 		Facilities:   convertToFacilityResponse(venueWithCourts.Facilities),
+		Rules:        rules,
 	}, nil
 }
 
@@ -152,6 +161,13 @@ func (uc *useCase) UpdateVenue(ctx context.Context, id uuid.UUID, req requests.U
 	if req.Status != "" {
 		venue.Status = models.VenueStatus(req.Status)
 	}
+	if req.Rules != nil {
+		rulesJSON, err := json.Marshal(req.Rules)
+		if err != nil {
+			return fmt.Errorf("failed to marshal rules: %w", err)
+		}
+		venue.Rules.RawMessage = rulesJSON
+	}
 
 	facilityUUIDs := make([]uuid.UUID, len(req.Facilities))
 	for i, facility := range req.Facilities {
@@ -188,6 +204,12 @@ func (uc *useCase) ListVenues(ctx context.Context, location string, limit, offse
 		if unMarshalJSON(json.RawMessage(venue.OpenRange.RawMessage), &openRange) != nil {
 			return nil, fmt.Errorf("error decoding enroll response: %v", err)
 		}
+
+		rules := []responses.RuleResponse{}
+		if unMarshalJSON(json.RawMessage(venue.Rules.RawMessage), &rules) != nil {
+			return nil, fmt.Errorf("error decoding enroll response: %v", err)
+		}
+
 		venueResponses[i] = responses.VenueResponse{
 			ID:           venue.ID.String(),
 			Name:         venue.Name,
@@ -202,6 +224,7 @@ func (uc *useCase) ListVenues(ctx context.Context, location string, limit, offse
 			Rating:       venue.Rating,
 			TotalReviews: venue.TotalReviews,
 			Facilities:   convertToFacilityResponse(venue.Facilities),
+			Rules:        rules,
 		}
 	}
 
@@ -236,6 +259,13 @@ func (uc *useCase) SearchVenues(ctx context.Context, query string, limit, offset
 			Rating:       venue.Rating,
 			TotalReviews: venue.TotalReviews,
 			Facilities:   convertToFacilityResponse(venue.Facilities),
+			Rules: func() []responses.RuleResponse {
+				var rules []responses.RuleResponse
+				if err := unMarshalJSON(venue.Rules.RawMessage, &rules); err != nil {
+					return nil
+				}
+				return rules
+			}(),
 		}
 	}
 
@@ -490,12 +520,31 @@ func convertToOpenRangeResponse(openRanges []requests.OpenRange) []responses.Ope
 	return openRangeResponses
 }
 
+func convertToRuleResponse(rules []requests.Rule) []responses.RuleResponse {
+	ruleResponses := make([]responses.RuleResponse, len(rules))
+	for i, rule := range rules {
+		ruleResponses[i] = responses.RuleResponse{
+			Rule: rule.Rule,
+		}
+	}
+	return ruleResponses
+}
+
+func convertToModelFacilities(facilities []requests.Facility) []models.Facility {
+	modelFacilities := make([]models.Facility, len(facilities))
+	for i, facility := range facilities {
+		modelFacilities[i] = models.Facility{
+			ID: uuid.MustParse(facility.ID),
+		}
+	}
+	return modelFacilities
+}
+
 func convertToFacilityResponse(facilities []models.Facility) []responses.FacilityResponse {
 	facilityResponses := make([]responses.FacilityResponse, len(facilities))
 	for i, facility := range facilities {
 		facilityResponses[i] = responses.FacilityResponse{
-			ID:   facility.ID.String(),
-			Name: facility.Name,
+			ID: facility.ID.String(),
 		}
 	}
 	return facilityResponses
