@@ -67,7 +67,10 @@ func (h *ChatHandler) GetChatMessage(c *fiber.Ctx) error {
 		return h.handleError(c, err)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(chat)
+	return c.Status(fiber.StatusOK).JSON(responses.SuccessResponse{
+		Message: "Chat messages retrieved successfully",
+		Data:    chat,
+	})
 }
 
 func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
@@ -93,10 +96,16 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 		return h.handleError(c, err)
 	}
 
-	messageBytes, _ := json.Marshal(chatMessage)
+	messageBytes, _ := json.Marshal(responses.BoardCastMessageResponse{
+		MessageaType: "send_message",
+		Data:         chatMessage,
+	})
 	h.chatHub.GetRoom(chatUUID.String()).Broadcast <- messageBytes
 
-	return c.Status(fiber.StatusCreated).JSON(chatMessage)
+	return c.Status(fiber.StatusOK).JSON(responses.SuccessResponse{
+		Message: "Message sent successfully",
+		Data:    chatMessage,	
+	})
 }
 
 func (h *ChatHandler) handleError(c *fiber.Ctx, err error) error {
@@ -156,7 +165,13 @@ func (h *ChatHandler) DeleteMessage(c *fiber.Ctx) error {
 		return h.handleError(c, err)
 	}
 
-	return c.JSON(responses.SuccessResponse{
+	messageBytes, _ := json.Marshal(responses.BoardCastMessageResponse{
+		MessageaType: "delete_message",
+		Data:         messageID,
+	})
+	h.chatHub.GetRoom(chatUUID.String()).Broadcast <- messageBytes
+
+	return c.Status(fiber.StatusOK).JSON(responses.SuccessResponse{
 		Message: "Message deleted successfully",
 	})
 }
@@ -191,7 +206,16 @@ func (h *ChatHandler) UpdateMessage(c *fiber.Ctx) error {
 		return h.handleError(c, err)
 	}
 
-	return c.JSON(responses.SuccessResponse{
+	messageBytes, _ := json.Marshal(responses.BoardCastMessageResponse{
+		MessageaType: "update_message",
+		Data: map[string]interface{}{
+			"message_id": messageID,
+			"message": req.Message,
+		},
+	})
+	h.chatHub.GetRoom(chatUUID.String()).Broadcast <- messageBytes
+
+	return c.Status(fiber.StatusOK).JSON(responses.SuccessResponse{
 		Message: "Message updated successfully",
 	})
 }
