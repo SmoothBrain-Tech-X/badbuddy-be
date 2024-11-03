@@ -11,7 +11,7 @@ import (
 type UseCase interface {
 	GetChatMessageByID(ctx context.Context, chatID uuid.UUID, limit int, offset int, userID uuid.UUID) (*responses.ChatResponse, error)
 
-	SendMessage(ctx context.Context, userID uuid.UUID, chatID uuid.UUID, req requests.SendAndUpdateMessageRequest) error
+	SendMessage(ctx context.Context, userID uuid.UUID, chatID uuid.UUID, req requests.SendAndUpdateMessageRequest) (*responses.ChatMassageResponse, error)
 
 	DeleteMessage(ctx context.Context, chatID uuid.UUID, messageID uuid.UUID, userID uuid.UUID) error
 

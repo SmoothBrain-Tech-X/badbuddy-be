@@ -4,7 +4,9 @@ import (
 	"badbuddy/internal/delivery/dto/requests"
 	"badbuddy/internal/delivery/dto/responses"
 	"badbuddy/internal/delivery/http/middleware"
+	"badbuddy/internal/delivery/http/ws"
 	"badbuddy/internal/usecase/chat"
+	"encoding/json"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -15,11 +17,13 @@ import (
 
 type ChatHandler struct {
 	chatUseCase chat.UseCase
+	chatHub     *ws.ChatHub
 }
 
-func NewChatHandler(chatUseCase chat.UseCase) *ChatHandler {
+func NewChatHandler(chatUseCase chat.UseCase, chatHub *ws.ChatHub) *ChatHandler {
 	return &ChatHandler{
 		chatUseCase: chatUseCase,
+		chatHub:     chatHub,
 	}
 }
 
@@ -84,14 +88,15 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 		return h.handleError(c, errors.New("invalid chat ID format"))
 	}
 
-	err = h.chatUseCase.SendMessage(c.Context(), userID, chatUUID, req)
+	chatMessage, err := h.chatUseCase.SendMessage(c.Context(), userID, chatUUID, req)
 	if err != nil {
 		return h.handleError(c, err)
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(responses.SuccessResponse{
-		Message: "Message sent successfully",
-	})
+	messageBytes, _ := json.Marshal(chatMessage)
+	h.chatHub.GetRoom(chatUUID.String()).Broadcast <- messageBytes
+
+	return c.Status(fiber.StatusCreated).JSON(chatMessage)
 }
 
 func (h *ChatHandler) handleError(c *fiber.Ctx, err error) error {

@@ -2,6 +2,7 @@ package venue
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -26,15 +27,15 @@ func NewVenueUseCase(venueRepo interfaces.VenueRepository, userRepo interfaces.U
 }
 
 func (uc *useCase) CreateVenue(ctx context.Context, ownerID uuid.UUID, req requests.CreateVenueRequest) (*responses.VenueResponse, error) {
+
 	venue := &models.Venue{
-		OpenTime:    req.OpenTime,
-		CloseTime:   req.CloseTime,
 		Name:        req.Name,
 		Description: req.Description,
 		Address:     req.Address,
 		Location:    req.Location,
 		Phone:       req.Phone,
 		Email:       req.Email,
+		OpenRange:   mustMarshalJSON(req.OpenRange),
 		ImageURLs:   req.ImageURLs,
 		Status:      models.VenueStatusActive,
 		OwnerID:     ownerID,
@@ -46,6 +47,11 @@ func (uc *useCase) CreateVenue(ctx context.Context, ownerID uuid.UUID, req reque
 		return nil, fmt.Errorf("failed to create venue: %w", err)
 	}
 
+	openRange := []responses.OpenRangeResponse{}
+	err := unMarshalJSON(venue.OpenRange, &openRange)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding enroll response: %v", err)
+	}
 	return &responses.VenueResponse{
 		ID:           venue.ID.String(),
 		Name:         venue.Name,
@@ -54,8 +60,7 @@ func (uc *useCase) CreateVenue(ctx context.Context, ownerID uuid.UUID, req reque
 		Location:     venue.Location,
 		Phone:        venue.Phone,
 		Email:        venue.Email,
-		OpenTime:     venue.OpenTime,
-		CloseTime:    venue.CloseTime,
+		OpenRange:    openRange,
 		ImageURLs:    venue.ImageURLs,
 		Status:       string(venue.Status),
 		Rating:       venue.Rating,
@@ -80,6 +85,10 @@ func (uc *useCase) GetVenue(ctx context.Context, id uuid.UUID) (*responses.Venue
 		}
 	}
 
+	openRange := []responses.OpenRangeResponse{}
+	if unMarshalJSON(venueWithCourts.OpenRange, openRange) != nil {
+		return nil, fmt.Errorf("error decoding enroll response: %v", err)
+	}
 	return &responses.VenueResponse{
 		ID:           venueWithCourts.ID.String(),
 		Name:         venueWithCourts.Name,
@@ -88,8 +97,7 @@ func (uc *useCase) GetVenue(ctx context.Context, id uuid.UUID) (*responses.Venue
 		Location:     venueWithCourts.Location,
 		Phone:        venueWithCourts.Phone,
 		Email:        venueWithCourts.Email,
-		OpenTime:     venueWithCourts.OpenTime,
-		CloseTime:    venueWithCourts.CloseTime,
+		OpenRange:    openRange,
 		ImageURLs:    venueWithCourts.ImageURLs,
 		Status:       string(venueWithCourts.Status),
 		Rating:       venueWithCourts.Rating,
@@ -121,19 +129,8 @@ func (uc *useCase) UpdateVenue(ctx context.Context, id uuid.UUID, req requests.U
 	if req.Email != "" {
 		venue.Email = req.Email
 	}
-	if !req.OpenTime.IsZero() {
-		openTime, err := time.Parse(time.RFC3339, req.OpenTime.Format(time.RFC3339))
-		if err != nil {
-			return fmt.Errorf("invalid open time format: %w", err)
-		}
-		venue.OpenTime = openTime
-	}
-	if !req.CloseTime.IsZero() {
-		closeTime, err := time.Parse(time.RFC3339, req.CloseTime.Format(time.RFC3339))
-		if err != nil {
-			return fmt.Errorf("invalid close time format: %w", err)
-		}
-		venue.CloseTime = closeTime
+	if req.OpenRange != nil {
+		venue.OpenRange = mustMarshalJSON(req.OpenRange)
 	}
 	if req.ImageURLs != "" {
 		venue.ImageURLs = req.ImageURLs
@@ -158,7 +155,13 @@ func (uc *useCase) ListVenues(ctx context.Context, location string, limit, offse
 	}
 
 	venueResponses := make([]responses.VenueResponse, len(venues))
+
 	for i, venue := range venues {
+
+		openRange := []responses.OpenRangeResponse{}
+		if unMarshalJSON(venue.OpenRange, openRange) != nil {
+			return nil, fmt.Errorf("error decoding enroll response: %v", err)
+		}
 		venueResponses[i] = responses.VenueResponse{
 			ID:           venue.ID.String(),
 			Name:         venue.Name,
@@ -167,8 +170,7 @@ func (uc *useCase) ListVenues(ctx context.Context, location string, limit, offse
 			Location:     venue.Location,
 			Phone:        venue.Phone,
 			Email:        venue.Email,
-			OpenTime:     venue.OpenTime,
-			CloseTime:    venue.CloseTime,
+			OpenRange:    openRange,
 			ImageURLs:    venue.ImageURLs,
 			Status:       string(venue.Status),
 			Rating:       venue.Rating,
@@ -187,6 +189,10 @@ func (uc *useCase) SearchVenues(ctx context.Context, query string, limit, offset
 
 	venueResponses := make([]responses.VenueResponse, len(venues))
 	for i, venue := range venues {
+		openRange := []responses.OpenRangeResponse{}
+		if unMarshalJSON(venue.OpenRange, openRange) != nil {
+			return responses.VenueResponseDTO{}, fmt.Errorf("error decoding enroll response: %v", err)
+		}
 		venueResponses[i] = responses.VenueResponse{
 			ID:           venue.ID.String(),
 			Name:         venue.Name,
@@ -195,8 +201,7 @@ func (uc *useCase) SearchVenues(ctx context.Context, query string, limit, offset
 			Location:     venue.Location,
 			Phone:        venue.Phone,
 			Email:        venue.Email,
-			OpenTime:     venue.OpenTime,
-			CloseTime:    venue.CloseTime,
+			OpenRange:    openRange,
 			ImageURLs:    venue.ImageURLs,
 			Status:       string(venue.Status),
 			Rating:       venue.Rating,
@@ -370,4 +375,19 @@ func (uc *useCase) GetReviews(ctx context.Context, venueID uuid.UUID, limit, off
 	}
 
 	return reviewResponses, nil
+}
+
+func mustMarshalJSON(v interface{}) []byte {
+	data, err := json.Marshal(v)
+	if err != nil {
+		panic(fmt.Sprintf("failed to marshal JSON: %v", err))
+	}
+	return data
+}
+
+func unMarshalJSON(data json.RawMessage, v interface{}) error {
+	if err := json.Unmarshal(data, v); err != nil {
+		return fmt.Errorf("failed to unmarshal JSON: %w", err)
+	}
+	return nil
 }

@@ -48,7 +48,6 @@ func (h *VenueHandler) CreateVenue(c *fiber.Ctx) error {
 			"error": "Invalid request body",
 		})
 	}
-
 	ownerID := c.Locals("userID").(uuid.UUID)
 
 	venue, err := h.venueUseCase.CreateVenue(c.Context(), ownerID, req)
