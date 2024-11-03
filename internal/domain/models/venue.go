@@ -104,7 +104,6 @@ type Venue struct {
 	UpdatedAt     time.Time      `db:"updated_at"`
 	DeletedAt     *time.Time     `db:"deleted_at"`
 	Search_vector string         `db:"search_vector"`
-	UserID        uuid.UUID      `db:"user_id"` // Added UserID field
 }
 
 type Court struct {
