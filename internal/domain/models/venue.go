@@ -106,6 +106,7 @@ type Venue struct {
 	Search_vector string         `db:"search_vector"`
 	Rules         NullRawMessage `db:"rules"`
 	Facilities    []Facility     `db:"facilities"`
+	Courts        []Court        `db:"courts"`
 }
 type VenueInsert struct {
 	ID            uuid.UUID   `db:"id"`

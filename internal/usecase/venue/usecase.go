@@ -225,6 +225,7 @@ func (uc *useCase) ListVenues(ctx context.Context, location string, limit, offse
 			TotalReviews: venue.TotalReviews,
 			Facilities:   convertToFacilityResponse(venue.Facilities),
 			Rules:        rules,
+			Courts: convertToCourtResponse(venue.Courts),
 		}
 	}
 
@@ -266,6 +267,7 @@ func (uc *useCase) SearchVenues(ctx context.Context, query string, limit, offset
 				}
 				return rules
 			}(),
+			Courts: convertToCourtResponse(venue.Courts),
 		}
 	}
 
@@ -548,6 +550,20 @@ func convertToFacilityResponse(facilities []models.Facility) []responses.Facilit
 		}
 	}
 	return facilityResponses
+}
+
+func convertToCourtResponse(courts []models.Court) []responses.CourtResponse {
+	courtResponses := make([]responses.CourtResponse, len(courts))
+	for i, court := range courts {
+		courtResponses[i] = responses.CourtResponse{
+			ID:           court.ID.String(),
+			Name:         court.Name,
+			Description:  court.Description,
+			PricePerHour: court.PricePerHour,
+			Status:       string(court.Status),
+		}
+	}
+	return courtResponses
 }
 
 func mustMarshalJSON(v interface{}) []byte {

@@ -230,13 +230,18 @@ func (r *venueRepository) List(ctx context.Context, location string, limit, offs
 			v.created_at, v.updated_at, v.search_vector, v.rules,
 			COALESCE(json_agg(
 				json_build_object('id', f.id, 'name', f.name)
-			) FILTER (WHERE f.id IS NOT NULL), '[]') AS facilities
+			) FILTER (WHERE f.id IS NOT NULL), '[]') AS facilities,
+			COALESCE(json_agg(
+				json_build_object('id', c.id, 'name', c.name, 'description', c.description, 'price_per_hour', c.price_per_hour, 'status', c.status)
+			) FILTER (WHERE c.id IS NOT NULL), '[]') AS courts
 		FROM 
 			venues v
 		LEFT JOIN 
 			venues_facilities vf ON v.id = vf.venue_id
 		LEFT JOIN 
 			facilities f ON vf.facility_id = f.id
+		LEFT JOIN
+			courts c ON v.id = c.venue_id
 		WHERE 
 			v.deleted_at IS NULL
 			AND ($1 = '' OR v.location = $1)
@@ -256,13 +261,14 @@ func (r *venueRepository) List(ctx context.Context, location string, limit, offs
 	for rows.Next() {
 		var venue models.Venue
 		var facilitiesJSON []byte
+		var courtsJSON []byte
 
 		err := rows.Scan(
 			&venue.ID, &venue.Name, &venue.Description, &venue.Address, &venue.Location,
 			&venue.Phone, &venue.Email, &venue.OpenRange, &venue.ImageURLs,
 			&venue.Status, &venue.Rating, &venue.TotalReviews, &venue.OwnerID,
 			&venue.CreatedAt, &venue.UpdatedAt, &venue.Search_vector, &venue.Rules,
-			&facilitiesJSON,
+			&facilitiesJSON, &courtsJSON,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan venue: %w", err)
@@ -272,6 +278,12 @@ func (r *venueRepository) List(ctx context.Context, location string, limit, offs
 		err = json.Unmarshal(facilitiesJSON, &venue.Facilities)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal facilities for venue %s: %w", venue.ID, err)
+		}
+
+		// Unmarshal courts JSON into the Courts slice
+		err = json.Unmarshal(courtsJSON, &venue.Courts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal courts for venue %s: %w", venue.ID, err)
 		}
 
 		venues = append(venues, venue)
@@ -305,13 +317,18 @@ func (r *venueRepository) Search(ctx context.Context, query string, limit, offse
 			v.created_at, v.updated_at, v.search_vector, v.rules,
 			COALESCE(json_agg(
 				json_build_object('id', f.id, 'name', f.name)
-			) FILTER (WHERE f.id IS NOT NULL), '[]') AS facilities
+			) FILTER (WHERE f.id IS NOT NULL), '[]') AS facilities,
+			COALESCE(json_agg(
+				json_build_object('id', c.id, 'name', c.name, 'description', c.description, 'price_per_hour', c.price_per_hour, 'status', c.status)
+			) FILTER (WHERE c.id IS NOT NULL), '[]') AS courts
 		FROM 
 			venues v
 		LEFT JOIN 
 			venues_facilities vf ON v.id = vf.venue_id
 		LEFT JOIN 
 			facilities f ON vf.facility_id = f.id
+		LEFT JOIN
+			courts c ON v.id = c.venue_id
 		WHERE 
 			v.deleted_at IS NULL
 			AND (
@@ -335,6 +352,7 @@ func (r *venueRepository) Search(ctx context.Context, query string, limit, offse
 	for rows.Next() {
 		var venue models.Venue
 		var facilitiesJSON []byte
+		var courtsJSON []byte
 
 		// Scan venue fields, then the aggregated JSON for facilities
 		err := rows.Scan(
@@ -342,7 +360,7 @@ func (r *venueRepository) Search(ctx context.Context, query string, limit, offse
 			&venue.Phone, &venue.Email, &venue.OpenRange, &venue.ImageURLs,
 			&venue.Status, &venue.Rating, &venue.TotalReviews, &venue.OwnerID,
 			&venue.CreatedAt, &venue.UpdatedAt, &venue.Search_vector, &venue.Rules,
-			&facilitiesJSON,
+			&facilitiesJSON, &courtsJSON,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan venue: %w", err)
@@ -352,6 +370,12 @@ func (r *venueRepository) Search(ctx context.Context, query string, limit, offse
 		err = json.Unmarshal(facilitiesJSON, &venue.Facilities)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal facilities for venue %s: %w", venue.ID, err)
+		}
+
+		// Unmarshal courts JSON into the Courts slice
+		err = json.Unmarshal(courtsJSON, &venue.Courts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal courts for venue %s: %w", venue.ID, err)
 		}
 
 		venues = append(venues, venue)
