@@ -32,6 +32,8 @@ type User struct {
 	Status       UserStatus  `db:"status"`
 	CreatedAt    time.Time   `db:"created_at"`
 	LastActiveAt time.Time   `db:"last_active_at"`
+	Gender       *string     `db:"gender"`
+	PlayHand     *string     `db:"play_hand"`
 }
 
 type UserProfile struct {

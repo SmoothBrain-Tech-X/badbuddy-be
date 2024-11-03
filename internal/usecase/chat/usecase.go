@@ -63,14 +63,14 @@ func (uc *useCase) GetChatMessageByID(ctx context.Context, chatID uuid.UUID, lim
 				LastName:     m.LastName,
 				Phone:        m.Phone,
 				PlayLevel:    string(m.PlayLevel),
-				Location:     m.Location,
-				Bio:          m.Bio,
-				AvatarURL:    m.AvatarURL,
+				Location:     *m.Location,
+				Bio:          *m.Bio,
+				AvatarURL:    *m.AvatarURL,
 				LastActiveAt: m.LastActiveAt,
 			},
 			Message:       m.Content,
-			Timestamp:     m.CreatedAt.String(),
-			EditTimeStamp: m.UpdatedAt.String(),
+			Timestamp:     m.CreatedAt,
+			EditTimeStamp: m.UpdatedAt,
 		})
 
 	}
@@ -82,6 +82,10 @@ func (uc *useCase) GetChatMessageByID(ctx context.Context, chatID uuid.UUID, lim
 }
 
 func (uc *useCase) SendMessage(ctx context.Context, userID, chatID uuid.UUID, req requests.SendAndUpdateMessageRequest) error {
+	if req.Message == "" {
+		return ErrValidation
+	}
+
 	isPartOfChat, err := uc.chatRepo.IsUserPartOfChat(ctx, userID, chatID)
 	if err != nil {
 		return err

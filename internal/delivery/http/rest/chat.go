@@ -72,6 +72,10 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 		return h.handleError(c, errors.New("invalid request body"))
 	}
 
+	if req.Message == "" {
+		return h.handleError(c, errors.New("message cannot be empty"))
+	}
+
 	userID := c.Locals("userID").(uuid.UUID)
 
 	chatID := c.Params("chatID")
@@ -156,6 +160,10 @@ func (h *ChatHandler) UpdateMessage(c *fiber.Ctx) error {
 	var req requests.SendAndUpdateMessageRequest
 	if err := c.BodyParser(&req); err != nil {
 		return h.handleError(c, errors.New("invalid request body"))
+	}
+
+	if req.Message == "" {
+		return h.handleError(c, errors.New("message cannot be empty"))
 	}
 
 	chatID := c.Params("chatID")

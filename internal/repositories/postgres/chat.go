@@ -29,31 +29,34 @@ func (r *chatRepository) GetChatMessageByID(ctx context.Context, chatID uuid.UUI
 	}
 
 	query = `
-		SELECT m.id AS m_id,
-			m.chai_id,
+		SELECT 
+			m.id AS m_id,
+			m.chat_id,
 			m.sender_id,
 			m.type,
 			m.content,
-			m.create_at,
-			m.update_at,
-			u.id AS u_id,
+			m.created_at,
+			m.updated_at,
 			u.email,
 			u.first_name,
 			u.last_name,
 			u.phone,
 			u.play_level,
 			u.avatar_url,
-			u.player_level,
+			u.play_level,
 			u.gender,
-			u.play_hand,
 			u.location,
 			u.bio,
 			u.last_active_at
-		FROM chat_messages m
-		JOIN USER u ON m.sender_id == u.id
-		WHERE chat_id = $1
-		AND m.deleted_at IS NULL
-		ORDER BY created_at DESC
+		FROM 
+			chat_messages m
+		JOIN 
+			users u ON m.sender_id = u.id
+		WHERE 
+			m.chat_id = $1
+			AND m.delete_at IS NULL
+		ORDER BY 
+			m.created_at DESC
 		LIMIT $2
 		OFFSET $3`
 
@@ -69,7 +72,7 @@ func (r *chatRepository) GetChatMessageByID(ctx context.Context, chatID uuid.UUI
 
 func (r *chatRepository) GetChatByID(ctx context.Context, chatID uuid.UUID) (*models.Chat, error) {
 	chat := models.Chat{}
-	
+
 	query := `SELECT * FROM chats WHERE id = $1`
 
 	err := r.db.GetContext(ctx, &chat, query, chatID)
@@ -130,7 +133,7 @@ func (r *chatRepository) AddUserToChat(ctx context.Context, userID, chatID uuid.
 }
 
 func (r *chatRepository) RemoveUserFromChat(ctx context.Context, userID, chatID uuid.UUID) error {
-	
+
 	query := `DELETE FROM chat_participants WHERE chat_id = $1 AND user_id = $2`
 
 	_, err := r.db.ExecContext(ctx, query, chatID, userID)
@@ -155,7 +158,7 @@ func (r *chatRepository) UpdateChatMessage(ctx context.Context, message *models.
 
 func (r *chatRepository) DeleteChatMessage(ctx context.Context, messageID uuid.UUID) error {
 
-	query := `UPDATE chat_messages SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1`
+	query := `UPDATE chat_messages SET delete_at = NOW(), updated_at = NOW() WHERE id = $1`
 
 	_, err := r.db.ExecContext(ctx, query, messageID)
 	if err != nil {
@@ -167,7 +170,7 @@ func (r *chatRepository) DeleteChatMessage(ctx context.Context, messageID uuid.U
 
 func (r *chatRepository) UpdateChatMessageReadStatus(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) error {
 
-	query := `UPDATE chat_messages SET status = "Read" WHERE chat_id = $1 AND sender_id != $2 AND status = "Sent"`
+	query := `UPDATE chat_messages SET status = 'read' WHERE chat_id = $1 AND sender_id != $2 AND status = 'sent'`
 
 	_, err := r.db.ExecContext(ctx, query, chatID, userID)
 	if err != nil {

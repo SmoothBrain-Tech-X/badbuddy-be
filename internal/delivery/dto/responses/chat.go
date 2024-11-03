@@ -1,5 +1,7 @@
 package responses
 
+import "time"
+
 type ChatResponse struct {
 	ChatMassage []ChatMassageResponse `json:"chat_massage"`
 }
@@ -9,6 +11,6 @@ type ChatMassageResponse struct {
 	ChatID        string       `json:"chat_id"`
 	Autor         UserResponse `json:"autor"`
 	Message       string       `json:"message"`
-	Timestamp     string       `json:"timestamp"`
-	EditTimeStamp string       `json:"edit_timestamp"`
+	Timestamp     time.Time    `json:"timestamp"`
+	EditTimeStamp time.Time       `json:"edit_timestamp"`
 }
