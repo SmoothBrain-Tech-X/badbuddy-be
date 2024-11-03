@@ -38,6 +38,22 @@ func (r *courtRepository) Create(ctx context.Context, court *models.Court) error
 func (r *courtRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Court, error) {
 	query := `
 		SELECT 
+			*
+		FROM courts
+		WHERE id = $1 AND deleted_at IS NULL`
+
+	var court models.Court
+	err := r.db.GetContext(ctx, &court, query, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &court, nil
+}
+
+func (r *courtRepository) GetCourtWithVenueByID(ctx context.Context, id uuid.UUID) (*models.CourtWithVenue, error) {
+	query := `
+		SELECT 
 			c.*,
 			v.name as venue_name,
 			v.location as venue_location,
@@ -46,7 +62,7 @@ func (r *courtRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Co
 		JOIN venues v ON v.id = c.venue_id
 		WHERE c.id = $1 AND c.deleted_at IS NULL`
 
-	var court models.Court
+	var court models.CourtWithVenue
 	err := r.db.GetContext(ctx, &court, query, id)
 	if err != nil {
 		return nil, err
@@ -178,6 +194,19 @@ func (r *courtRepository) Delete(ctx context.Context, id uuid.UUID) error {
 func (r *courtRepository) GetByVenue(ctx context.Context, venueID uuid.UUID) ([]models.Court, error) {
 	query := `
 		SELECT 
+			*
+		FROM courts
+		WHERE venue_id = $1 AND deleted_at IS NULL
+		ORDER BY c.name ASC`
+
+	var courts []models.Court
+	err := r.db.SelectContext(ctx, &courts, query, venueID)
+	return courts, err
+}
+
+func (r *courtRepository) GetCourtWithVenueByVenue(ctx context.Context, venueID uuid.UUID) ([]models.CourtWithVenue, error) {
+	query := `
+		SELECT 
 			c.*,
 			v.name as venue_name,
 			v.location as venue_location,
@@ -187,7 +216,7 @@ func (r *courtRepository) GetByVenue(ctx context.Context, venueID uuid.UUID) ([]
 		WHERE c.venue_id = $1 AND c.deleted_at IS NULL
 		ORDER BY c.name ASC`
 
-	var courts []models.Court
+	var courts []models.CourtWithVenue
 	err := r.db.SelectContext(ctx, &courts, query, venueID)
 	return courts, err
 }

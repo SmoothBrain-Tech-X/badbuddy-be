@@ -16,7 +16,7 @@ const (
 	BookingStatusPending   BookingStatus = "pending"
 	BookingStatusConfirmed BookingStatus = "confirmed"
 	BookingStatusCancelled BookingStatus = "cancelled"
-	BookingStatusCompleted BookingStatus = "completed"
+	// BookingStatusCompleted BookingStatus = "completed"
 
 	PaymentStatusPending   PaymentStatus = "pending"
 	PaymentStatusCompleted PaymentStatus = "completed"
@@ -59,6 +59,7 @@ type CourtBooking struct {
 type Payment struct {
 	ID            uuid.UUID     `db:"id"`
 	BookingID     uuid.UUID     `db:"booking_id"`
+	UserID        uuid.UUID     `db:"user_id"`
 	Amount        float64       `db:"amount"`
 	Status        PaymentStatus `db:"status"`
 	PaymentMethod PaymentMethod `db:"payment_method"`
@@ -109,7 +110,6 @@ func (b *CourtBooking) Validate() error {
 	if b.StartTime.IsZero() || b.EndTime.IsZero() {
 		return fmt.Errorf("start and end times are required")
 	}
-
 	// Check date and time logic
 	now := time.Now()
 	if b.Date.Before(now.Truncate(24 * time.Hour)) {
@@ -150,7 +150,7 @@ func (b *CourtBooking) CalculateTotalAmount() float64 {
 
 // CanBeCancelled checks if the booking can be cancelled based on its status and time
 func (b *CourtBooking) CanBeCancelled() bool {
-	if b.Status == BookingStatusCancelled || b.Status == BookingStatusCompleted {
+	if b.Status == BookingStatusCancelled || b.Status == BookingStatusConfirmed {
 		return false
 	}
 
@@ -159,7 +159,6 @@ func (b *CourtBooking) CanBeCancelled() bool {
 	bookingStart := time.Date(
 		b.Date.Year(), b.Date.Month(), b.Date.Day(),
 		b.StartTime.Hour(), b.StartTime.Minute(), 0, 0, time.Local)
-
 	return now.Add(24 * time.Hour).Before(bookingStart)
 }
 

@@ -41,7 +41,7 @@ func (uc *useCase) CreateBooking(ctx context.Context, userID uuid.UUID, req requ
 	}
 
 	// Get court details
-	court, err := uc.courtRepo.GetByID(ctx, courtID)
+	court, err := uc.courtRepo.GetCourtWithVenueByID(ctx, courtID)
 	if err != nil {
 		return nil, fmt.Errorf("court not found: %w", err)
 	}
@@ -51,7 +51,6 @@ func (uc *useCase) CreateBooking(ctx context.Context, userID uuid.UUID, req requ
 	if err != nil {
 		return nil, fmt.Errorf("venue not found: %w", err)
 	}
-
 	if venue.Status != models.VenueStatusActive {
 		return nil, fmt.Errorf("venue is not active")
 	}
@@ -61,7 +60,6 @@ func (uc *useCase) CreateBooking(ctx context.Context, userID uuid.UUID, req requ
 	if err != nil {
 		return nil, fmt.Errorf("invalid date format: %w", err)
 	}
-
 	startTime, err := time.Parse("15:04", req.StartTime)
 	if err != nil {
 		return nil, fmt.Errorf("invalid start time format: %w", err)
@@ -79,11 +77,9 @@ func (uc *useCase) CreateBooking(ctx context.Context, userID uuid.UUID, req requ
 		Status:    venue.Status,
 		OpenRange: venue.OpenRange,
 	}
-
 	if err := uc.isVenueOpenForBooking(venueDetails, date, startTime, endTime); err != nil {
 		return nil, err
 	}
-
 	// Check availability
 	available, err := uc.bookingRepo.CheckCourtAvailability(ctx, courtID, date, startTime, endTime)
 	if err != nil {
@@ -92,7 +88,6 @@ func (uc *useCase) CreateBooking(ctx context.Context, userID uuid.UUID, req requ
 	if !available {
 		return nil, fmt.Errorf("court is not available for the selected time slot")
 	}
-
 	// Calculate duration and total amount
 	duration := endTime.Sub(startTime)
 	hours := duration.Hours()
@@ -112,11 +107,9 @@ func (uc *useCase) CreateBooking(ctx context.Context, userID uuid.UUID, req requ
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
-
 	if err := booking.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid booking: %w", err)
 	}
-
 	if err := uc.bookingRepo.Create(ctx, booking); err != nil {
 		return nil, fmt.Errorf("failed to create booking: %w", err)
 	}
@@ -224,6 +217,10 @@ func (uc *useCase) UpdateBooking(ctx context.Context, id uuid.UUID, req requests
 		return nil, fmt.Errorf("cannot update cancelled booking")
 	}
 
+	if booking.Status == models.BookingStatusConfirmed {
+		return nil, fmt.Errorf("cannot update confirm booking")
+	}
+
 	if req.Status != "" {
 		booking.Status = models.BookingStatus(req.Status)
 	}
@@ -309,7 +306,7 @@ func (uc *useCase) CheckAvailability(ctx context.Context, req requests.CheckAvai
 	}
 
 	// Get court details
-	court, err := uc.courtRepo.GetByID(ctx, courtID)
+	court, err := uc.courtRepo.GetCourtWithVenueByID(ctx, courtID)
 	if err != nil {
 		return nil, fmt.Errorf("court not found: %w", err)
 	}
@@ -346,7 +343,24 @@ func (uc *useCase) CheckAvailability(ctx context.Context, req requests.CheckAvai
 	}, nil
 }
 
-func (uc *useCase) CreatePayment(ctx context.Context, bookingID uuid.UUID, req requests.CreatePaymentRequest) (*responses.PaymentResponse, error) {
+func (uc *useCase) GetPayment(ctx context.Context, id uuid.UUID) (*responses.PaymentResponse, error) {
+	payment, err := uc.bookingRepo.GetPayment(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("payment not found: %w", err)
+	}
+
+	return &responses.PaymentResponse{
+		ID:            payment.ID.String(),
+		Amount:        payment.Amount,
+		Status:        string(payment.Status),
+		PaymentMethod: string(payment.PaymentMethod),
+		TransactionID: *payment.TransactionID,
+		CreatedAt:     payment.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:     payment.UpdatedAt.Format(time.RFC3339),
+	}, nil
+}
+
+func (uc *useCase) CreatePayment(ctx context.Context, bookingID uuid.UUID, userID uuid.UUID, req requests.CreatePaymentRequest) (*responses.PaymentResponse, error) {
 	booking, err := uc.bookingRepo.GetByID(ctx, bookingID)
 	if err != nil {
 		return nil, fmt.Errorf("booking not found: %w", err)
@@ -367,6 +381,7 @@ func (uc *useCase) CreatePayment(ctx context.Context, bookingID uuid.UUID, req r
 	payment := &models.Payment{
 		ID:            uuid.New(),
 		BookingID:     bookingID,
+		UserID:        userID,
 		Amount:        req.Amount,
 		Status:        models.PaymentStatusPending,
 		PaymentMethod: models.PaymentMethod(req.PaymentMethod),
@@ -379,11 +394,52 @@ func (uc *useCase) CreatePayment(ctx context.Context, bookingID uuid.UUID, req r
 		return nil, fmt.Errorf("failed to create payment: %w", err)
 	}
 
-	// Update booking status
-	booking.Status = models.BookingStatusConfirmed
-	booking.UpdatedAt = time.Now()
+	// Update booking status if payment method is not Cash
+	if payment.PaymentMethod != models.PaymentMethodCash {
+		booking.Status = models.BookingStatusConfirmed
+		booking.UpdatedAt = time.Now()
 
-	if err := uc.bookingRepo.Update(ctx, booking); err != nil {
+		if err := uc.bookingRepo.Update(ctx, booking); err != nil {
+			return nil, fmt.Errorf("failed to update booking status: %w", err)
+		}
+	}
+	return &responses.PaymentResponse{
+		ID:            payment.ID.String(),
+		Amount:        payment.Amount,
+		Status:        string(payment.Status),
+		PaymentMethod: string(payment.PaymentMethod),
+		TransactionID: *payment.TransactionID,
+		CreatedAt:     payment.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:     payment.UpdatedAt.Format(time.RFC3339),
+	}, nil
+}
+
+func (uc *useCase) UpdatePayment(ctx context.Context, id uuid.UUID, userID uuid.UUID, req requests.UpdatePaymentRequest) (*responses.PaymentResponse, error) {
+	payment, err := uc.bookingRepo.GetPayment(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("payment not found: %w", err)
+	}
+
+	if payment.UserID != userID { // check if user is admin will pass this check
+		return nil, fmt.Errorf("unauthorized to update this payment")
+	}
+
+	if payment.Status != models.PaymentStatusPending {
+		return nil, fmt.Errorf("payment already completed")
+	}
+
+	if req.Status != "" {
+		payment.Status = models.PaymentStatus(req.Status)
+	}
+
+	payment.UpdatedAt = time.Now()
+
+	if err := uc.bookingRepo.UpdatePayment(ctx, payment); err != nil {
+		return nil, fmt.Errorf("failed to update payment: %w", err)
+	}
+
+	// Update booking status based on payment status
+	if err := uc.handlePaymentStatus(ctx, payment.BookingID, payment.Status); err != nil {
 		return nil, fmt.Errorf("failed to update booking status: %w", err)
 	}
 
@@ -591,25 +647,25 @@ func (uc *useCase) isBookingConflict(booking1, booking2 *models.CourtBooking) bo
 }
 
 // validateBookingUpdate checks if a booking can be updated
-func (uc *useCase) validateBookingUpdate(booking *models.CourtBooking) error {
-	if booking.Status == models.BookingStatusCancelled {
-		return fmt.Errorf("cannot update cancelled booking")
-	}
+// func (uc *useCase) validateBookingUpdate(booking *models.CourtBooking) error {
+// 	if booking.Status == models.BookingStatusCancelled {
+// 		return fmt.Errorf("cannot update cancelled booking")
+// 	}
 
-	if booking.Status == models.BookingStatusCompleted {
-		return fmt.Errorf("cannot update completed booking")
-	}
+// 	// if booking.Status == models.BookingStatusCompleted {
+// 	// 	return fmt.Errorf("cannot update completed booking")
+// 	// }
 
-	bookingStart := time.Date(
-		booking.Date.Year(), booking.Date.Month(), booking.Date.Day(),
-		booking.StartTime.Hour(), booking.StartTime.Minute(), 0, 0, time.Local)
+// 	bookingStart := time.Date(
+// 		booking.Date.Year(), booking.Date.Month(), booking.Date.Day(),
+// 		booking.StartTime.Hour(), booking.StartTime.Minute(), 0, 0, time.Local)
 
-	if time.Now().After(bookingStart) {
-		return fmt.Errorf("cannot update past or ongoing bookings")
-	}
+// 	if time.Now().After(bookingStart) {
+// 		return fmt.Errorf("cannot update past or ongoing bookings")
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 // validatePaymentCreate validates payment creation request
 func (uc *useCase) validatePaymentCreate(booking *models.CourtBooking, amount float64) error {
@@ -630,7 +686,6 @@ func (uc *useCase) validatePaymentCreate(booking *models.CourtBooking, amount fl
 }
 func (uc *useCase) isVenueOpenForBooking(venue *models.Venue, date time.Time, startTime, endTime time.Time) error {
 	dayOfWeek := strings.ToLower(date.Weekday().String())
-
 	var openRanges []responses.OpenRangeResponse
 	if !venue.OpenRange.Valid {
 		return fmt.Errorf("venue open range is invalid")
@@ -646,7 +701,8 @@ func (uc *useCase) isVenueOpenForBooking(venue *models.Venue, date time.Time, st
 			break
 		}
 	}
-	if daySchedule == nil {
+
+	if !daySchedule.IsOpen {
 		return fmt.Errorf("venue is closed on %s", date.Weekday())
 	}
 
@@ -662,8 +718,11 @@ func (uc *useCase) isVenueOpenForBooking(venue *models.Venue, date time.Time, st
 		date.Location(),
 	)
 
-	// Check if booking time is within operating hours
-	if startTime.Before(scheduleOpen) || endTime.After(scheduleClose) {
+	if startTime.Hour() < scheduleOpen.Hour() ||
+		(startTime.Hour() == scheduleOpen.Hour() && startTime.Minute() < scheduleOpen.Minute()) ||
+		endTime.Hour() > scheduleClose.Hour() ||
+		(endTime.Hour() == scheduleClose.Hour() && endTime.Minute() > scheduleClose.Minute()) {
+		fmt.Println("not")
 		return fmt.Errorf("booking must be within venue operating hours (%s - %s)",
 			daySchedule.OpenTime.Format("15:04"), daySchedule.CloseTime.Format("15:04"))
 	}

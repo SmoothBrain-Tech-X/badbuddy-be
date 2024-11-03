@@ -22,6 +22,12 @@ type CreatePaymentRequest struct {
 	TransactionID *string `json:"transaction_id" validate:"omitempty,min=1"`
 }
 
+//UpdatePaymentRequest represents the request to update a payment for a booking
+type UpdatePaymentRequest struct {
+	PaymentMethod string `json:"payment_method" validate:"omitempty,oneof=cash transfer card qr"`
+	Status        string `json:"status" validate:"required,oneof=pending confirmed cancelled"`
+}
+
 // ListBookingsRequest represents the request to list bookings with filters
 type ListBookingsRequest struct {
 	CourtID  string `json:"court_id" validate:"omitempty,uuid"`

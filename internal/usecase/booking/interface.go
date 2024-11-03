@@ -18,7 +18,9 @@ type UseCase interface {
 	CancelBooking(ctx context.Context, id uuid.UUID, userID uuid.UUID) error
 	GetUserBookings(ctx context.Context, userID uuid.UUID, includeHistory bool) ([]responses.BookingResponse, error)
 	CheckAvailability(ctx context.Context, req requests.CheckAvailabilityRequest) (*responses.CourtAvailabilityResponse, error)
-	CreatePayment(ctx context.Context, bookingID uuid.UUID, req requests.CreatePaymentRequest) (*responses.PaymentResponse, error)
+	GetPayment(ctx context.Context, id uuid.UUID) (*responses.PaymentResponse, error)
+	CreatePayment(ctx context.Context, id uuid.UUID, userID uuid.UUID, req requests.CreatePaymentRequest) (*responses.PaymentResponse, error)
+	UpdatePayment(ctx context.Context, id uuid.UUID, userID uuid.UUID, req requests.UpdatePaymentRequest) (*responses.PaymentResponse, error)
 }
 
 var (

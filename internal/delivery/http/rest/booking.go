@@ -36,7 +36,9 @@ func (h *BookingHandler) SetupBookingRoutes(app *fiber.App) {
 	bookings.Put("/:id", h.UpdateBooking)
 	bookings.Post("/:id/cancel", h.CancelBooking)
 	bookings.Get("/user/me", h.GetUserBookings)
-	bookings.Post("/:id/payments", h.CreatePayment)
+	bookings.Get("/:id/payment", h.GetPayment)
+	bookings.Post("/:id/payment", h.CreatePayment)
+	bookings.Put("/:id/payment", h.UpdatePayment)
 }
 
 // CreateBooking handles the creation of a new booking
@@ -54,7 +56,9 @@ func (h *BookingHandler) CreateBooking(c *fiber.Ctx) error {
 
 	booking, err := h.bookingUseCase.CreateBooking(c.Context(), userID, req)
 	if err != nil {
-		return h.handleError(c, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(responses.SuccessResponse{
@@ -76,7 +80,9 @@ func (h *BookingHandler) GetBooking(c *fiber.Ctx) error {
 
 	booking, err := h.bookingUseCase.GetBooking(c.Context(), id)
 	if err != nil {
-		return h.handleError(c, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
 	}
 
 	return c.JSON(responses.SuccessResponse{
@@ -99,7 +105,9 @@ func (h *BookingHandler) ListBookings(c *fiber.Ctx) error {
 
 	bookings, err := h.bookingUseCase.ListBookings(c.Context(), req)
 	if err != nil {
-		return h.handleError(c, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
 	}
 
 	return c.JSON(bookings)
@@ -127,7 +135,9 @@ func (h *BookingHandler) UpdateBooking(c *fiber.Ctx) error {
 
 	booking, err := h.bookingUseCase.UpdateBooking(c.Context(), id, req)
 	if err != nil {
-		return h.handleError(c, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
 	}
 
 	return c.JSON(responses.SuccessResponse{
@@ -150,7 +160,9 @@ func (h *BookingHandler) CancelBooking(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(uuid.UUID)
 
 	if err := h.bookingUseCase.CancelBooking(c.Context(), id, userID); err != nil {
-		return h.handleError(c, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
 	}
 
 	return c.JSON(responses.SuccessResponse{
@@ -165,7 +177,9 @@ func (h *BookingHandler) GetUserBookings(c *fiber.Ctx) error {
 
 	bookings, err := h.bookingUseCase.GetUserBookings(c.Context(), userID, includeHistory)
 	if err != nil {
-		return h.handleError(c, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
 	}
 
 	return c.JSON(responses.SuccessResponse{
@@ -184,11 +198,36 @@ func (h *BookingHandler) CheckAvailability(c *fiber.Ctx) error {
 
 	availability, err := h.bookingUseCase.CheckAvailability(c.Context(), req)
 	if err != nil {
-		return h.handleError(c, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
 	}
 
 	return c.JSON(responses.SuccessResponse{
 		Data: availability,
+	})
+}
+
+// get payment for booking
+func (h *BookingHandler) GetPayment(c *fiber.Ctx) error {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(responses.ErrorResponse{
+			Error:       "Invalid Court Booking ID",
+			Code:        "INVALID_ID",
+			Description: "The provided court booking ID is not in a valid format",
+		})
+	}
+
+	booking, err := h.bookingUseCase.GetPayment(c.Context(), id)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(responses.SuccessResponse{
+		Data: booking,
 	})
 }
 
@@ -211,10 +250,44 @@ func (h *BookingHandler) CreatePayment(c *fiber.Ctx) error {
 			Description: err.Error(),
 		})
 	}
-
-	payment, err := h.bookingUseCase.CreatePayment(c.Context(), bookingID, req)
+	userID := c.Locals("userID").(uuid.UUID)
+	payment, err := h.bookingUseCase.CreatePayment(c.Context(), bookingID, userID, req)
 	if err != nil {
-		return h.handleError(c, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(responses.SuccessResponse{
+		Message: "Payment created successfully",
+		Data:    payment,
+	})
+}
+
+func (h *BookingHandler) UpdatePayment(c *fiber.Ctx) error {
+	bookingID, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(responses.ErrorResponse{
+			Error:       "Invalid booking ID",
+			Code:        "INVALID_ID",
+			Description: "The provided booking ID is not in a valid format",
+		})
+	}
+
+	var req requests.UpdatePaymentRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(responses.ErrorResponse{
+			Error:       "Invalid request body",
+			Code:        "INVALID_REQUEST",
+			Description: err.Error(),
+		})
+	}
+	userID := c.Locals("userID").(uuid.UUID)
+	payment, err := h.bookingUseCase.UpdatePayment(c.Context(), bookingID, userID, req)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(responses.SuccessResponse{
