@@ -105,9 +105,19 @@ func (r *chatRepository) SaveMessage(ctx context.Context, message *models.Messag
 		return nil, err
 	}
 
-	messageReturn := models.Message{}
+	messageReturn, err := r.GetMessageByID(ctx, message.ID)
+	if err != nil {
+		return nil, err
+	}
 
-	query = `
+	return messageReturn, nil
+
+}
+
+func (r *chatRepository) GetMessageByID(ctx context.Context, messageID uuid.UUID) (*models.Message, error) {
+	message := models.Message{}
+
+	query := `
 		SELECT 
 			m.id AS m_id,
 			m.chat_id,
@@ -132,16 +142,14 @@ func (r *chatRepository) SaveMessage(ctx context.Context, message *models.Messag
 		JOIN 
 			users u ON m.sender_id = u.id
 		WHERE 
-			m.chat_id = $2
-			AND m.id = $1
-			AND m.delete_at IS NULL`
+			m.id = $1`
 
-	err = r.db.GetContext(ctx, &messageReturn, query, message.ID, message.ChatID)
+	err := r.db.GetContext(ctx, &message, query, messageID)
 	if err != nil {
 		return nil, err
 	}
 
-	return &messageReturn, nil
+	return &message, nil
 
 }
 

@@ -14,3 +14,8 @@ type ChatMassageResponse struct {
 	Timestamp     time.Time    `json:"timestamp"`
 	EditTimeStamp time.Time       `json:"edit_timestamp"`
 }
+
+type BoardCastMessageResponse struct {
+	MessageaType string `json:"message_type"`
+	Data    interface{} `json:"data,omitempty"`
+}

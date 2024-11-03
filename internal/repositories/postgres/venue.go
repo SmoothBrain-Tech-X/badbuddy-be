@@ -125,8 +125,7 @@ func (r *venueRepository) Update(ctx context.Context, venue *models.Venue) error
 			location = :location,
 			phone = :phone,
 			email = :email,
-			open_time = :open_time,
-			close_time = :close_time,
+			open_range = :open_range,
 			image_urls = :image_urls,
 			status = :status,
 			updated_at = :updated_at
