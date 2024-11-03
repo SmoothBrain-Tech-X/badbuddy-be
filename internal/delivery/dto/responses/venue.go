@@ -25,7 +25,7 @@ type VenueResponse struct {
 	TotalReviews int                 `json:"total_reviews"`
 	Courts       []CourtResponse     `json:"courts"`
 	Facilities   []FacilityResponse  `json:"facilities"`
-	Rules        []RuleResponse            `json:"rules"`
+	Rules        []RuleResponse      `json:"rules"`
 }
 
 type OpenRangeResponse struct {
@@ -42,6 +42,11 @@ type RuleResponse struct {
 type VenueResponseDTO struct {
 	Venues []VenueResponse `json:"venues"`
 	Total  int             `json:"total"`
+}
+
+type ListVenueResponse struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 type ReviewResponse struct {
