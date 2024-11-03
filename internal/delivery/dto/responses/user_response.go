@@ -11,6 +11,8 @@ type UserResponse struct {
 	PlayLevel    string    `json:"play_level"`
 	Location     string    `json:"location"`
 	Bio          string    `json:"bio"`
+	Gender       string    `json:"gender"`
+	PlayHand     string    `json:"play_hand"`
 	AvatarURL    string    `json:"avatar_url"`
 	LastActiveAt time.Time `json:"last_active_at"`
 }

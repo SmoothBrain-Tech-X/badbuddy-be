@@ -30,6 +30,8 @@ type User struct {
 	Bio          string      `db:"bio"`
 	AvatarURL    string      `db:"avatar_url"`
 	Status       UserStatus  `db:"status"`
+	Gender       string      `db:"gender"`
+	PlayHand     string      `db:"play_hand"`
 	CreatedAt    time.Time   `db:"created_at"`
 	LastActiveAt time.Time   `db:"last_active_at"`
 }
