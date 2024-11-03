@@ -125,7 +125,11 @@ func (uc *useCase) UpdateVenue(ctx context.Context, id uuid.UUID, req requests.U
 		venue.Email = req.Email
 	}
 	if req.OpenRange != nil {
-		venue.OpenRange = models.NullRawMessage{RawMessage: mustMarshalJSON(req.OpenRange)}
+		openRangeJSON, err := json.Marshal(req.OpenRange)
+		if err != nil {
+			return fmt.Errorf("failed to marshal open range: %w", err)
+		}
+		venue.OpenRange.RawMessage = openRangeJSON
 	}
 	if req.ImageURLs != "" {
 		venue.ImageURLs = req.ImageURLs
@@ -133,9 +137,7 @@ func (uc *useCase) UpdateVenue(ctx context.Context, id uuid.UUID, req requests.U
 	if req.Status != "" {
 		venue.Status = models.VenueStatus(req.Status)
 	}
-
 	venue.UpdatedAt = time.Now()
-
 	if err := uc.venueRepo.Update(ctx, &venue.Venue); err != nil {
 		return fmt.Errorf("failed to update venue: %w", err)
 	}
@@ -382,6 +384,7 @@ func convertToOpenRangeResponse(openRanges []requests.OpenRange) []responses.Ope
 	for _, openRange := range openRanges {
 		openRangeResponses = append(openRangeResponses, responses.OpenRangeResponse{
 			Day:       openRange.Day,
+			IsOpen:    openRange.IsOpen,
 			OpenTime:  openRange.OpenTime,
 			CloseTime: openRange.CloseTime,
 		})

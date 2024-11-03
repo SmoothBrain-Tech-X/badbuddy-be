@@ -117,6 +117,21 @@ func (r *venueRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Ve
 }
 
 func (r *venueRepository) Update(ctx context.Context, venue *models.Venue) error {
+
+	params := map[string]interface{}{
+		"id":          venue.ID,
+		"name":        venue.Name,
+		"description": venue.Description,
+		"address":     venue.Address,
+		"location":    venue.Location,
+		"phone":       venue.Phone,
+		"email":       venue.Email,
+		"open_range":  venue.OpenRange.RawMessage,
+		"image_urls":  venue.ImageURLs,
+		"status":      venue.Status,
+		"updated_at":  venue.UpdatedAt,
+	}
+
 	query := `
 		UPDATE venues SET
 			name = :name,
@@ -131,7 +146,7 @@ func (r *venueRepository) Update(ctx context.Context, venue *models.Venue) error
 			updated_at = :updated_at
 		WHERE id = :id AND deleted_at IS NULL`
 
-	result, err := r.db.NamedExecContext(ctx, query, venue)
+	result, err := r.db.NamedExecContext(ctx, query, params)
 	if err != nil {
 		return fmt.Errorf("failed to update venue: %w", err)
 	}
