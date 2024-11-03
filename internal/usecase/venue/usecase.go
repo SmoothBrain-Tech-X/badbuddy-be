@@ -47,11 +47,6 @@ func (uc *useCase) CreateVenue(ctx context.Context, ownerID uuid.UUID, req reque
 		return nil, fmt.Errorf("failed to create venue: %w", err)
 	}
 
-	openRange := []responses.OpenRangeResponse{}
-	err := unMarshalJSON(venue.OpenRange.RawMessage, &openRange)
-	if err != nil {
-		return nil, fmt.Errorf("error decoding enroll response: %v", err)
-	}
 	return &responses.VenueResponse{
 		ID:           venue.ID.String(),
 		Name:         venue.Name,
@@ -60,7 +55,7 @@ func (uc *useCase) CreateVenue(ctx context.Context, ownerID uuid.UUID, req reque
 		Location:     venue.Location,
 		Phone:        venue.Phone,
 		Email:        venue.Email,
-		OpenRange:    openRange,
+		OpenRange:    convertToOpenRangeResponse(req.OpenRange),
 		ImageURLs:    venue.ImageURLs,
 		Status:       string(venue.Status),
 		Rating:       venue.Rating,
@@ -380,6 +375,18 @@ func (uc *useCase) GetReviews(ctx context.Context, venueID uuid.UUID, limit, off
 	}
 
 	return reviewResponses, nil
+}
+
+func convertToOpenRangeResponse(openRanges []requests.OpenRange) []responses.OpenRangeResponse {
+	var openRangeResponses []responses.OpenRangeResponse
+	for _, openRange := range openRanges {
+		openRangeResponses = append(openRangeResponses, responses.OpenRangeResponse{
+			Day:       openRange.Day,
+			OpenTime:  openRange.OpenTime,
+			CloseTime: openRange.CloseTime,
+		})
+	}
+	return openRangeResponses
 }
 
 func mustMarshalJSON(v interface{}) []byte {

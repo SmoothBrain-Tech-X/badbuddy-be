@@ -2,6 +2,7 @@
 package models
 
 import (
+	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -28,6 +29,14 @@ type NullRawMessage struct {
 	Valid bool
 }
 
+// Value implements the driver.Valuer interface
+func (n NullRawMessage) Value() (driver.Value, error) {
+	if !n.Valid || len(n.RawMessage) == 0 {
+		return nil, nil
+	}
+	return n.RawMessage, nil
+}
+
 // Scan implements the sql.Scanner interface
 func (n *NullRawMessage) Scan(value interface{}) error {
 	if value == nil {
@@ -37,16 +46,44 @@ func (n *NullRawMessage) Scan(value interface{}) error {
 
 	switch v := value.(type) {
 	case []byte:
+		if len(v) == 0 {
+			n.RawMessage, n.Valid = nil, false
+			return nil
+		}
 		n.RawMessage = json.RawMessage(v)
 		n.Valid = true
 		return nil
 	case string:
+		if v == "" {
+			n.RawMessage, n.Valid = nil, false
+			return nil
+		}
 		n.RawMessage = json.RawMessage(v)
 		n.Valid = true
 		return nil
 	default:
 		return fmt.Errorf("unsupported Scan, storing driver.Value type %T into type *NullRawMessage", value)
 	}
+}
+
+// MarshalJSON implements json.Marshaler
+func (n NullRawMessage) MarshalJSON() ([]byte, error) {
+	if !n.Valid || len(n.RawMessage) == 0 {
+		return []byte("null"), nil
+	}
+	return n.RawMessage, nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (n *NullRawMessage) UnmarshalJSON(data []byte) error {
+	if len(data) == 0 || string(data) == "null" {
+		n.Valid = false
+		n.RawMessage = nil
+		return nil
+	}
+	n.Valid = true
+	n.RawMessage = json.RawMessage(data)
+	return nil
 }
 
 type Venue struct {
