@@ -2,7 +2,9 @@ package booking
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"badbuddy/internal/delivery/dto/requests"
@@ -71,12 +73,15 @@ func (uc *useCase) CreateBooking(ctx context.Context, userID uuid.UUID, req requ
 	}
 
 	// Check venue operating hours
-	venueOpen, _ := time.Parse("15:04", venue.OpenTime.Format("15:04"))
-	venueClose, _ := time.Parse("15:04", venue.CloseTime.Format("15:04"))
+	venueDetails := &models.Venue{
+		ID:        venue.ID,
+		Name:      venue.Name,
+		Status:    venue.Status,
+		OpenRange: venue.OpenRange,
+	}
 
-	if startTime.Before(venueOpen) || endTime.After(venueClose) {
-		return nil, fmt.Errorf("booking time must be within venue operating hours (%s - %s)",
-			venue.OpenTime, venue.CloseTime)
+	if err := uc.isVenueOpenForBooking(venueDetails, date, startTime, endTime); err != nil {
+		return nil, err
 	}
 
 	// Check availability
@@ -394,8 +399,6 @@ func (uc *useCase) CreatePayment(ctx context.Context, bookingID uuid.UUID, req r
 }
 
 // Helper methods
-
-// validateBookingTime validates if the booking time is valid
 func (uc *useCase) validateBookingTime(date time.Time, startTime, endTime time.Time, venue *models.Venue) error {
 	now := time.Now()
 
@@ -428,12 +431,8 @@ func (uc *useCase) validateBookingTime(date time.Time, startTime, endTime time.T
 	}
 
 	// Check venue operating hours
-	venueOpen, _ := time.Parse("15:04", venue.OpenTime.Format("15:04"))
-	venueClose, _ := time.Parse("15:04", venue.CloseTime.Format("15:04"))
-
-	if startTime.Before(venueOpen) || endTime.After(venueClose) {
-		return fmt.Errorf("booking must be within venue operating hours (%s - %s)",
-			venue.OpenTime, venue.CloseTime)
+	if err := uc.isVenueOpenForBooking(venue, date, startTime, endTime); err != nil {
+		return err
 	}
 
 	return nil
@@ -445,12 +444,25 @@ func (uc *useCase) calculateBookingAmount(startTime, endTime time.Time, pricePer
 	hours := duration.Hours()
 	return hours * pricePerHour
 }
-
-// generateTimeSlots generates available time slots for a given date
 func (uc *useCase) generateTimeSlots(ctx context.Context, courtID uuid.UUID, date time.Time, venue *models.Venue) ([]responses.TimeSlot, error) {
-	// Parse venue operating hours
-	venueOpen, _ := time.Parse("15:04", venue.OpenTime.Format("15:04"))
-	venueClose, _ := time.Parse("15:04", venue.CloseTime.Format("15:04"))
+	dayOfWeek := strings.ToLower(date.Weekday().String())
+
+	var openRanges []responses.OpenRangeResponse
+
+	if err := json.Unmarshal(venue.OpenRange, &openRanges); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal open range: %w", err)
+	}
+
+	var daySchedule *responses.OpenRangeResponse
+	for _, schedule := range openRanges {
+		if strings.EqualFold(schedule.Day, dayOfWeek) {
+			daySchedule = &schedule
+			break
+		}
+	}
+	if daySchedule == nil {
+		return nil, fmt.Errorf("venue is closed on %s", date.Weekday())
+	}
 
 	// Get existing bookings for the day
 	bookings, err := uc.bookingRepo.GetCourtBookings(ctx, courtID, date)
@@ -470,10 +482,10 @@ func (uc *useCase) generateTimeSlots(ctx context.Context, courtID uuid.UUID, dat
 
 	// Generate available time slots
 	var slots []responses.TimeSlot
-	for t := venueOpen; t.Before(venueClose); t = t.Add(30 * time.Minute) {
+	for t := daySchedule.OpenTime; t.Before(daySchedule.CloseTime); t = t.Add(30 * time.Minute) {
 		if !bookedTimes[t.Format("15:04")] {
 			endTime := t.Add(30 * time.Minute)
-			if !endTime.After(venueClose) {
+			if !endTime.After(daySchedule.CloseTime) {
 				slots = append(slots, responses.TimeSlot{
 					StartTime: t.Format("15:04"),
 					EndTime:   endTime.Format("15:04"),
@@ -609,6 +621,46 @@ func (uc *useCase) validatePaymentCreate(booking *models.CourtBooking, amount fl
 	if amount != booking.TotalAmount {
 		return fmt.Errorf("payment amount (%f) does not match booking amount (%f)",
 			amount, booking.TotalAmount)
+	}
+
+	return nil
+}
+func (uc *useCase) isVenueOpenForBooking(venue *models.Venue, date time.Time, startTime, endTime time.Time) error {
+	dayOfWeek := strings.ToLower(date.Weekday().String())
+
+	var openRanges []responses.OpenRangeResponse
+
+	if err := json.Unmarshal(venue.OpenRange, &openRanges); err != nil {
+		return fmt.Errorf("failed to unmarshal open range: %w", err)
+	}
+
+	var daySchedule *responses.OpenRangeResponse
+	for _, schedule := range openRanges {
+		if strings.EqualFold(schedule.Day, dayOfWeek) {
+			daySchedule = &schedule
+			break
+		}
+	}
+	if daySchedule == nil {
+		return fmt.Errorf("venue is closed on %s", date.Weekday())
+	}
+
+	// Convert schedule times to same date as booking for comparison
+	scheduleOpen := time.Date(
+		date.Year(), date.Month(), date.Day(),
+		daySchedule.OpenTime.Hour(), daySchedule.OpenTime.Minute(), 0, 0,
+		date.Location(),
+	)
+	scheduleClose := time.Date(
+		date.Year(), date.Month(), date.Day(),
+		daySchedule.CloseTime.Hour(), daySchedule.CloseTime.Minute(), 0, 0,
+		date.Location(),
+	)
+
+	// Check if booking time is within operating hours
+	if startTime.Before(scheduleOpen) || endTime.After(scheduleClose) {
+		return fmt.Errorf("booking must be within venue operating hours (%s - %s)",
+			daySchedule.OpenTime.Format("15:04"), daySchedule.CloseTime.Format("15:04"))
 	}
 
 	return nil

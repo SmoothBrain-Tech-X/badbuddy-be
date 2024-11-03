@@ -16,5 +16,4 @@ type UseCase interface {
 	ListCourts(ctx context.Context, req requests.ListCourtsRequest) (*responses.CourtListResponse, error)
 	GetVenueCourts(ctx context.Context, venueID uuid.UUID) ([]responses.CourtResponse, error)
 	UpdateCourtStatus(ctx context.Context, id uuid.UUID, status string) error
-	CheckCourtAvailability(ctx context.Context, req requests.CheckCourtAvailabilityRequest) (*responses.CourtAvailabilityResponse, error)
 }

@@ -17,6 +17,7 @@ type CreateVenueRequest struct {
 
 type OpenRange struct {
 	Day       string    `json:"day"`
+	IsOpen    bool      `json:"is_open"`
 	OpenTime  time.Time `json:"open_time"`
 	CloseTime time.Time `json:"close_time"`
 }

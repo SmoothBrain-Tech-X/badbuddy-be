@@ -14,7 +14,7 @@ type UseCase interface {
 	UpdateSession(ctx context.Context, sessionID uuid.UUID, hostID uuid.UUID, req requests.UpdateSessionRequest) error
 	GetSession(ctx context.Context, id uuid.UUID) (*responses.SessionResponse, error)
 	ListSessions(ctx context.Context, filters map[string]interface{}, limit, offset int) (*responses.SessionListResponse, error)
-	SearchSessions(ctx context.Context, query string, limit, offset int) (*responses.SessionListResponse, error)
+	SearchSessions(ctx context.Context, query string, filters map[string]interface{}, limit, offset int) (*responses.SessionListResponse, error)
 	JoinSession(ctx context.Context, sessionID, userID uuid.UUID, req requests.JoinSessionRequest) error
 	LeaveSession(ctx context.Context, sessionID, userID uuid.UUID) error
 	CancelSession(ctx context.Context, sessionID, hostID uuid.UUID) error

@@ -121,10 +121,31 @@ func (h *SessionHandler) ListSessions(c *fiber.Ctx) error {
 
 func (h *SessionHandler) SearchSessions(c *fiber.Ctx) error {
 	query := c.Query("q")
-	limit := c.QueryInt("limit", 10)
-	offset := c.QueryInt("offset", 0)
+	filters := make(map[string]interface{})
+	if date := c.Query("date"); date != "" {
+		filters["date"] = date
+	}
+	if location := c.Query("location"); location != "" {
+		filters["location"] = location
+	}
+	if playerLevel := c.Query("player_level"); playerLevel != "" {
+		filters["player_level"] = playerLevel
+	}
+	if status := c.Query("status"); status != "" {
+		filters["status"] = status
+	}
 
-	sessions, err := h.sessionUseCase.SearchSessions(c.Context(), query, limit, offset)
+	limit := c.QueryInt("limit", 10)
+	if limit <= 0 || limit > 100 {
+		limit = 10
+	}
+
+	offset := c.QueryInt("offset", 0)
+	if offset < 0 {
+		offset = 0
+	}
+
+	sessions, err := h.sessionUseCase.SearchSessions(c.Context(), query, filters, limit, offset)
 	if err != nil {
 		return h.handleError(c, err)
 	}
