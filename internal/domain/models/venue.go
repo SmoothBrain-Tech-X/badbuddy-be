@@ -104,6 +104,7 @@ type Venue struct {
 	UpdatedAt     time.Time      `db:"updated_at"`
 	DeletedAt     *time.Time     `db:"deleted_at"`
 	Search_vector string         `db:"search_vector"`
+	Rules         NullRawMessage `db:"rules"`
 	Facilities    []Facility     `db:"facilities"`
 }
 
