@@ -380,6 +380,23 @@ func (uc *useCase) GetReviews(ctx context.Context, venueID uuid.UUID, limit, off
 	return reviewResponses, nil
 }
 
+func (uc *useCase) GetFacilities(ctx context.Context, venueID uuid.UUID) ([]responses.FacilityResponse, error) {
+	facilities, err := uc.venueRepo.GetFacilities(ctx, venueID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get facilities: %w", err)
+	}
+
+	facilityResponses := make([]responses.FacilityResponse, len(facilities))
+	for i, facility := range facilities {
+		facilityResponses[i] = responses.FacilityResponse{
+			ID:          facility.ID.String(),
+			Name:        facility.Name,
+		}
+	}
+
+	return facilityResponses, nil
+}
+
 func mustMarshalJSON(v interface{}) []byte {
 	data, err := json.Marshal(v)
 	if err != nil {

@@ -22,4 +22,5 @@ type VenueRepository interface {
 	AddReview(ctx context.Context, review *models.VenueReview) error
 	GetReviews(ctx context.Context, venueID uuid.UUID, limit, offset int) ([]models.VenueReview, error)
 	UpdateVenueRating(ctx context.Context, venueID uuid.UUID) error
+	GetFacilities(ctx context.Context, venueID uuid.UUID) ([]models.Facility, error)
 }

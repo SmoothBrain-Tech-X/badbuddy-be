@@ -338,3 +338,17 @@ func (r *venueRepository) UpdateVenueRating(ctx context.Context, venueID uuid.UU
 
 	return nil
 }
+
+func (r *venueRepository) GetFacilities(ctx context.Context, venueID uuid.UUID) ([]models.Facility, error) {
+	query := `
+		SELECT * FROM venues_facilities 
+		WHERE venue_id = $1`
+
+	facilities := []models.Facility{}
+	err := r.db.SelectContext(ctx, &facilities, query, venueID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get facilities: %w", err)
+	}
+
+	return facilities, nil
+}
