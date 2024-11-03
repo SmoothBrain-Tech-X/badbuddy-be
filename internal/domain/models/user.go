@@ -35,6 +35,11 @@ type User struct {
 	CreatedAt     time.Time   `db:"created_at"`
 	LastActiveAt  time.Time   `db:"last_active_at"`
 	Search_vector string      `db:"search_vector"`
+	Role          string      `db:"role"`
+}
+
+type VenueUserOwn struct {
+	ID string `db:"id"`
 }
 
 type UserProfile struct {

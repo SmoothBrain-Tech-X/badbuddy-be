@@ -65,6 +65,22 @@ func (h *UserHandler) Login(c *fiber.Ctx) error {
 		})
 	}
 
+	userID, err := uuid.Parse(response.User.ID)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid user ID format",
+		})
+	}
+	venues, err := h.userUseCase.GetVenueUserOwn(c.Context(), userID)
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	response.User.Venues = venues
+
 	return c.JSON(response)
 }
 
@@ -82,6 +98,16 @@ func (h *UserHandler) GetProfile(c *fiber.Ctx) error {
 			"error": err.Error(),
 		})
 	}
+
+	venues, err := h.userUseCase.GetVenueUserOwn(c.Context(), userID)
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	profile.Venues = venues
 
 	return c.JSON(profile)
 }

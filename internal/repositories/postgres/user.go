@@ -301,3 +301,16 @@ func (r *userRepository) SearchUsers(ctx context.Context, query string, filters 
 
 	return users, nil
 }
+
+func (r *userRepository) GetVenueUserOwn(ctx context.Context, userID uuid.UUID) ([]models.VenueUserOwn, error) {
+	var venues []models.VenueUserOwn
+	err := r.db.SelectContext(ctx, &venues, `
+		SELECT id FROM venues WHERE owner_id = $1`,
+		userID)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get venue owners: %w", err)
+	}
+
+	return venues, nil
+}

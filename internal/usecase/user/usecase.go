@@ -119,11 +119,10 @@ func (uc *useCase) generateToken(userID uuid.UUID) (string, error) {
 
 func (uc *useCase) Login(ctx context.Context, req requests.LoginRequest) (*responses.LoginResponse, error) {
 	user, err := uc.userRepo.GetByEmail(ctx, req.Email)
-
+	
 	if err != nil {
 		return nil, ErrInvalidCredentials
 	}
-
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
 		return nil, ErrInvalidCredentials
 	}
@@ -240,6 +239,22 @@ func (uc *useCase) SearchUsers(ctx context.Context, query string, filters reques
 	return userResponses, nil
 }
 
+func (uc *useCase) GetVenueUserOwn(ctx context.Context, userID uuid.UUID) ([]responses.Venue, error) {
+	venues, err := uc.userRepo.GetVenueUserOwn(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get venue owners: %w", err)
+	}
+
+	venueOwners := make([]responses.Venue, len(venues))
+	for i, venue := range venues {
+		venueOwners[i] = responses.Venue{
+			ID: venue.ID,
+		}
+	}
+
+	return venueOwners, nil
+}
+
 func (uc *useCase) mapUserToResponse(user *models.User) responses.UserResponse {
 	var userID string
 
@@ -260,6 +275,7 @@ func (uc *useCase) mapUserToResponse(user *models.User) responses.UserResponse {
 		Bio:          user.Bio,
 		AvatarURL:    user.AvatarURL,
 		LastActiveAt: user.LastActiveAt,
+		Role:         user.Role,
 	}
 }
 
@@ -268,7 +284,6 @@ func (uc *useCase) IsAdmin(ctx context.Context, userID uuid.UUID) (bool, error) 
 	// if err != nil {
 	// 	return false, ErrUserNotFound
 	// }
-
 
 	return true, nil
 }

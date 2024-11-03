@@ -15,6 +15,8 @@ type UserResponse struct {
 	PlayHand     string    `json:"play_hand"`
 	AvatarURL    string    `json:"avatar_url"`
 	LastActiveAt time.Time `json:"last_active_at"`
+	Role         string    `json:"role"`
+	Venues       []Venue   `json:"venues"`
 }
 
 type UserProfileResponse struct {
@@ -24,6 +26,11 @@ type UserProfileResponse struct {
 	AverageRating   float64 `json:"average_rating"`
 	TotalReviews    int     `json:"total_reviews"`
 	RegularPartners int     `json:"regular_partners"`
+	Venues          []Venue `json:"venues"`
+}
+
+type Venue struct {
+	ID string `json:"id"`
 }
 
 type LoginResponse struct {
