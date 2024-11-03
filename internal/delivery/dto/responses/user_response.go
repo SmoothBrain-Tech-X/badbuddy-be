@@ -14,7 +14,6 @@ type UserResponse struct {
 	Gender       string    `json:"gender"`
 	PlayHand     string    `json:"play_hand"`
 	AvatarURL    string    `json:"avatar_url"`
-	VenueID      string    `json:"venue_id"`
 	LastActiveAt time.Time `json:"last_active_at"`
 }
 

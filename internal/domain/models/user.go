@@ -32,7 +32,6 @@ type User struct {
 	Status        UserStatus  `db:"status"`
 	Gender        string      `db:"gender"`
 	PlayHand      string      `db:"play_hand"`
-	VenueID       *uuid.UUID  `db:"venue_id"`
 	CreatedAt     time.Time   `db:"created_at"`
 	LastActiveAt  time.Time   `db:"last_active_at"`
 	Search_vector string      `db:"search_vector"`
