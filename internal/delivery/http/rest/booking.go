@@ -103,7 +103,9 @@ func (h *BookingHandler) ListBookings(c *fiber.Ctx) error {
 	req.Limit = c.QueryInt("limit", 10)
 	req.Offset = c.QueryInt("offset", 0)
 
-	bookings, err := h.bookingUseCase.ListBookings(c.Context(), req)
+	userID := c.Locals("userID").(uuid.UUID)
+
+	bookings, err := h.bookingUseCase.ListBookings(c.Context(), userID, req)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),

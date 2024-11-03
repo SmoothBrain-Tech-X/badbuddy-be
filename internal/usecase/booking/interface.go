@@ -13,7 +13,7 @@ import (
 type UseCase interface {
 	CreateBooking(ctx context.Context, userID uuid.UUID, req requests.CreateBookingRequest) (*responses.BookingResponse, error)
 	GetBooking(ctx context.Context, id uuid.UUID) (*responses.BookingResponse, error)
-	ListBookings(ctx context.Context, req requests.ListBookingsRequest) (*responses.BookingListResponse, error)
+	ListBookings(ctx context.Context, userID uuid.UUID, req requests.ListBookingsRequest) (*responses.BookingListResponse, error)
 	UpdateBooking(ctx context.Context, id uuid.UUID, req requests.UpdateBookingRequest) (*responses.BookingResponse, error)
 	CancelBooking(ctx context.Context, id uuid.UUID, userID uuid.UUID) error
 	GetUserBookings(ctx context.Context, userID uuid.UUID, includeHistory bool) ([]responses.BookingResponse, error)

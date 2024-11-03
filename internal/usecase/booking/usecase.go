@@ -131,7 +131,7 @@ func (uc *useCase) GetBooking(ctx context.Context, id uuid.UUID) (*responses.Boo
 
 	return booking.ToResponse(), nil
 }
-func (uc *useCase) ListBookings(ctx context.Context, req requests.ListBookingsRequest) (*responses.BookingListResponse, error) {
+func (uc *useCase) ListBookings(ctx context.Context, userID uuid.UUID, req requests.ListBookingsRequest) (*responses.BookingListResponse, error) {
 	filters := make(map[string]interface{})
 
 	if req.CourtID != "" {
@@ -182,13 +182,13 @@ func (uc *useCase) ListBookings(ctx context.Context, req requests.ListBookingsRe
 	}
 
 	// Get total count
-	total, err := uc.bookingRepo.Count(ctx, filters)
+	total, err := uc.bookingRepo.Count(ctx, userID, filters)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get total count: %w", err)
 	}
 
 	// Get bookings
-	bookings, err := uc.bookingRepo.List(ctx, filters, limit, offset)
+	bookings, err := uc.bookingRepo.List(ctx, userID, filters, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list bookings: %w", err)
 	}
