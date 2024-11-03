@@ -96,16 +96,53 @@ func (r *chatRepository) IsUserPartOfChat(ctx context.Context, userID, chatID uu
 	return count > 0, nil
 }
 
-func (r *chatRepository) SaveMessage(ctx context.Context, message *models.Message) error {
+func (r *chatRepository) SaveMessage(ctx context.Context, message *models.Message) (*models.Message, error) {
 
 	query := `INSERT INTO chat_messages (id, chat_id, sender_id, type, content, created_at, updated_at, status) VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6)`
 
 	_, err := r.db.ExecContext(ctx, query, message.ID, message.ChatID, message.SenderID, message.Type, message.Content, message.Status)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	messageReturn := models.Message{}
+
+	query = `
+		SELECT 
+			m.id AS m_id,
+			m.chat_id,
+			m.sender_id,
+			m.type,
+			m.content,
+			m.created_at,
+			m.updated_at,
+			u.email,
+			u.first_name,
+			u.last_name,
+			u.phone,
+			u.play_level,
+			u.avatar_url,
+			u.play_level,
+			u.gender,
+			u.location,
+			u.bio,
+			u.last_active_at
+		FROM 
+			chat_messages m
+		JOIN 
+			users u ON m.sender_id = u.id
+		WHERE 
+			m.chat_id = $2
+			AND m.id = $1
+			AND m.delete_at IS NULL`
+
+	err = r.db.GetContext(ctx, &messageReturn, query, message.ID, message.ChatID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &messageReturn, nil
+
 }
 
 func (r *chatRepository) CreateChat(ctx context.Context, chat *models.Chat) error {

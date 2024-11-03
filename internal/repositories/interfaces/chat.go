@@ -14,7 +14,7 @@ type ChatRepository interface {
 
 	IsUserPartOfChat(ctx context.Context, userID, chatID uuid.UUID) (bool, error)
 
-	SaveMessage(ctx context.Context, message *models.Message) error
+	SaveMessage(ctx context.Context, message *models.Message) (*models.Message, error)
 
 	CreateChat(ctx context.Context, chat *models.Chat) error
 
