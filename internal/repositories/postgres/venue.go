@@ -27,11 +27,11 @@ func (r *venueRepository) Create(ctx context.Context, venue *models.Venue) error
 	query := `
 		INSERT INTO venues (
 			id, name, description, address, location, phone, email,
-			open_time, close_time, image_urls, status, rating,
+			open_range, image_urls, status, rating,
 			total_reviews, owner_id, created_at, updated_at
 		) VALUES (
 			:id, :name, :description, :address, :location, :phone, :email,
-			:open_time, :close_time, :image_urls, :status, :rating,
+			:open_range, :image_urls, :status, :rating,
 			:total_reviews, :owner_id, :created_at, :updated_at
 		)`
 

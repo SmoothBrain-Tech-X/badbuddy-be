@@ -11,20 +11,25 @@ type CourtResponse struct {
 }
 
 type VenueResponse struct {
-	ID           string          `json:"id"`
-	Name         string          `json:"name"`
-	Description  string          `json:"description"`
-	Address      string          `json:"address"`
-	Location     string          `json:"location"`
-	Phone        string          `json:"phone"`
-	Email        string          `json:"email"`
-	OpenTime     time.Time       `json:"open_time"`
-	CloseTime    time.Time       `json:"close_time"`
-	ImageURLs    string          `json:"image_urls"`
-	Status       string          `json:"status"`
-	Rating       float64         `json:"rating"`
-	TotalReviews int             `json:"total_reviews"`
-	Courts       []CourtResponse `json:"courts"`
+	ID           string              `json:"id"`
+	Name         string              `json:"name"`
+	Description  string              `json:"description"`
+	Address      string              `json:"address"`
+	Location     string              `json:"location"`
+	Phone        string              `json:"phone"`
+	Email        string              `json:"email"`
+	OpenRange    []OpenRangeResponse `json:"open_range" validate:"required"`
+	ImageURLs    string              `json:"image_urls"`
+	Status       string              `json:"status"`
+	Rating       float64             `json:"rating"`
+	TotalReviews int                 `json:"total_reviews"`
+	Courts       []CourtResponse     `json:"courts"`
+}
+
+type OpenRangeResponse struct {
+	Day       string    `json:"day"`
+	OpenTime  time.Time `json:"open_time"`
+	CloseTime time.Time `json:"close_time"`
 }
 
 type VenueResponseDTO struct {

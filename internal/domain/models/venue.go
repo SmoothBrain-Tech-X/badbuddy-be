@@ -2,6 +2,7 @@
 package models
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,24 +22,23 @@ const (
 )
 
 type Venue struct {
-	ID            uuid.UUID   `db:"id"`
-	Name          string      `db:"name"`
-	Description   string      `db:"description"`
-	Address       string      `db:"address"`
-	Location      string      `db:"location"`
-	Phone         string      `db:"phone"`
-	Email         string      `db:"email"`
-	OpenTime      time.Time   `db:"open_time"`
-	CloseTime     time.Time   `db:"close_time"`
-	ImageURLs     string      `db:"image_urls"`
-	Status        VenueStatus `db:"status"`
-	Rating        float64     `db:"rating"`
-	TotalReviews  int         `db:"total_reviews"`
-	OwnerID       uuid.UUID   `db:"owner_id"`
-	CreatedAt     time.Time   `db:"created_at"`
-	UpdatedAt     time.Time   `db:"updated_at"`
-	DeletedAt     *time.Time  `db:"deleted_at"`
-	Search_vector string      `db:"search_vector"`
+	ID            uuid.UUID       `db:"id"`
+	Name          string          `db:"name"`
+	Description   string          `db:"description"`
+	Address       string          `db:"address"`
+	Location      string          `db:"location"`
+	Phone         string          `db:"phone"`
+	Email         string          `db:"email"`
+	OpenRange     json.RawMessage `db:"open_range"`
+	ImageURLs     string          `db:"image_urls"`
+	Status        VenueStatus     `db:"status"`
+	Rating        float64         `db:"rating"`
+	TotalReviews  int             `db:"total_reviews"`
+	OwnerID       uuid.UUID       `db:"owner_id"`
+	CreatedAt     time.Time       `db:"created_at"`
+	UpdatedAt     time.Time       `db:"updated_at"`
+	DeletedAt     *time.Time      `db:"deleted_at"`
+	Search_vector string          `db:"search_vector"`
 }
 
 type Court struct {
