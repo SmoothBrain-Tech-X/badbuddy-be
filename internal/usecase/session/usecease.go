@@ -130,8 +130,8 @@ func (uc *useCase) CreateSession(ctx context.Context, hostID uuid.UUID, req requ
 	return uc.toSessionResponse(sessionDetail), nil
 }
 
-func (uc *useCase) SearchSessions(ctx context.Context, query string, limit, offset int) (*responses.SessionListResponse, error) {
-	sessions, err := uc.sessionRepo.Search(ctx, query, limit, offset)
+func (uc *useCase) SearchSessions(ctx context.Context, query string, filters map[string]interface{}, limit, offset int) (*responses.SessionListResponse, error) {
+	sessions, err := uc.sessionRepo.Search(ctx, query, filters, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search sessions: %w", err)
 	}
