@@ -82,7 +82,7 @@ func (r *bookingRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.
 	return &booking, nil
 }
 
-func (r *bookingRepository) List(ctx context.Context, filters map[string]interface{}, limit, offset int) ([]models.CourtBooking, error) {
+func (r *bookingRepository) List(ctx context.Context, userID uuid.UUID, filters map[string]interface{}, limit, offset int) ([]models.CourtBooking, error) {
 	query := `
 		SELECT 
 			b.*,
@@ -121,6 +121,12 @@ func (r *bookingRepository) List(ctx context.Context, filters map[string]interfa
 	if venueID, ok := filters["venue_id"].(uuid.UUID); ok {
 		query += fmt.Sprintf(" AND v.id = $%d", argCount)
 		args = append(args, venueID)
+		argCount++
+	}
+
+	if userID != uuid.Nil {
+		query += fmt.Sprintf(" AND b.user_id = $%d", argCount)
+		args = append(args, userID)
 		argCount++
 	}
 
@@ -430,7 +436,7 @@ func (r *bookingRepository) UpdatePayment(ctx context.Context, payment *models.P
 	return nil
 }
 
-func (r *bookingRepository) Count(ctx context.Context, filters map[string]interface{}) (int, error) {
+func (r *bookingRepository) Count(ctx context.Context, userID uuid.UUID, filters map[string]interface{}) (int, error) {
 	query := `
 		SELECT COUNT(*)
 		FROM court_bookings b
@@ -466,6 +472,11 @@ func (r *bookingRepository) Count(ctx context.Context, filters map[string]interf
 		argCount++
 	}
 
+	if userID != uuid.Nil {
+		query += fmt.Sprintf(" AND b.user_id = $%d", argCount)
+		args = append(args, userID)
+		argCount++
+	}
 	var count int
 	err := r.db.GetContext(ctx, &count, query, args...)
 	if err != nil {
