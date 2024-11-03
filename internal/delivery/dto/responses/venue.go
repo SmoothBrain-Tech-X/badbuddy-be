@@ -25,7 +25,7 @@ type VenueResponse struct {
 	TotalReviews int                 `json:"total_reviews"`
 	Courts       []CourtResponse     `json:"courts"`
 	Facilities   []FacilityResponse  `json:"facilities"`
-	Rules        []string            `json:"rules"`
+	Rules        []RuleResponse            `json:"rules"`
 }
 
 type OpenRangeResponse struct {
@@ -33,6 +33,10 @@ type OpenRangeResponse struct {
 	IsOpen    bool      `json:"is_open"`
 	OpenTime  time.Time `json:"open_time"`
 	CloseTime time.Time `json:"close_time"`
+}
+
+type RuleResponse struct {
+	Rule string `json:"rule"`
 }
 
 type VenueResponseDTO struct {

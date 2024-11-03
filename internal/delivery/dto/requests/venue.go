@@ -13,7 +13,7 @@ type CreateVenueRequest struct {
 	Email       string      `json:"email" validate:"required,email"`
 	OpenRange   []OpenRange `json:"open_range" validate:"required"`
 	ImageURLs   string      `json:"image_urls"`
-	Rules       []string    `json:"rules"`
+	Rules       []Rule      `json:"rules"`
 	Facilities  []Facility  `json:"facilities" validate:"required"`
 }
 
@@ -28,6 +28,10 @@ type OpenRange struct {
 	CloseTime time.Time `json:"close_time"`
 }
 
+type Rule struct {
+	Rule string `json:"rule"`
+}
+
 type UpdateVenueRequest struct {
 	Name        string      `json:"name"`
 	Description string      `json:"description"`
@@ -38,7 +42,7 @@ type UpdateVenueRequest struct {
 	OpenRange   []OpenRange `json:"open_range" validate:"required"`
 	ImageURLs   string      `json:"image_urls"`
 	Status      string      `json:"status"`
-	Rules       []string    `json:"rules"`
+	Rules       []Rule      `json:"rules"`
 	Facilities  []Facility  `json:"facilities"`
 }
 

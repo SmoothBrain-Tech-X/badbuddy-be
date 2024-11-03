@@ -99,7 +99,7 @@ func (uc *useCase) GetVenue(ctx context.Context, id uuid.UUID) (*responses.Venue
 	if unMarshalJSON(venueWithCourts.OpenRange.RawMessage, &openRange) != nil {
 		return nil, fmt.Errorf("error decoding enroll response: %v", err)
 	}
-	rules := []string{}
+	rules := []responses.RuleResponse{}
 	if unMarshalJSON(venueWithCourts.Rules.RawMessage, &rules) != nil {
 		return nil, fmt.Errorf("error decoding enroll response: %v", err)
 	}
@@ -203,7 +203,7 @@ func (uc *useCase) ListVenues(ctx context.Context, location string, limit, offse
 			return nil, fmt.Errorf("error decoding enroll response: %v", err)
 		}
 
-		rules := []string{}
+		rules := []responses.RuleResponse{}
 		if unMarshalJSON(json.RawMessage(venue.Rules.RawMessage), &rules) != nil {
 			return nil, fmt.Errorf("error decoding enroll response: %v", err)
 		}
@@ -257,8 +257,8 @@ func (uc *useCase) SearchVenues(ctx context.Context, query string, limit, offset
 			Rating:       venue.Rating,
 			TotalReviews: venue.TotalReviews,
 			Facilities:   convertToFacilityResponse(venue.Facilities),
-			Rules: func() []string {
-				var rules []string
+			Rules: func() []responses.RuleResponse {
+				var rules []responses.RuleResponse
 				if err := unMarshalJSON(venue.Rules.RawMessage, &rules); err != nil {
 					return nil
 				}
