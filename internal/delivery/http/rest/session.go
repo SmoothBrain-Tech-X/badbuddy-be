@@ -27,6 +27,7 @@ func (h *SessionHandler) SetupSessionRoutes(app *fiber.App) {
 
 	// Public routes
 	sessions.Get("/", h.ListSessions)
+	sessions.Get("/search", h.SearchSessions)
 	sessions.Get("/:id", h.GetSession)
 
 	// Protected routes
@@ -111,6 +112,19 @@ func (h *SessionHandler) ListSessions(c *fiber.Ctx) error {
 	}
 
 	sessions, err := h.sessionUseCase.ListSessions(c.Context(), filters, limit, offset)
+	if err != nil {
+		return h.handleError(c, err)
+	}
+
+	return c.JSON(sessions)
+}
+
+func (h *SessionHandler) SearchSessions(c *fiber.Ctx) error {
+	query := c.Query("q")
+	limit := c.QueryInt("limit", 10)
+	offset := c.QueryInt("offset", 0)
+
+	sessions, err := h.sessionUseCase.SearchSessions(c.Context(), query, limit, offset)
 	if err != nil {
 		return h.handleError(c, err)
 	}
@@ -234,12 +248,10 @@ func (h *SessionHandler) GetUserSessions(c *fiber.Ctx) error {
 	})
 }
 
-// handleError centralizes error handling and status code selection
 func (h *SessionHandler) handleError(c *fiber.Ctx, err error) error {
 	var status int
 	var errorResponse responses.ErrorResponse
 
-	// Add specific error type checks here if needed
 	switch {
 	case errors.Is(err, session.ErrSessionNotFound):
 		status = fiber.StatusNotFound
