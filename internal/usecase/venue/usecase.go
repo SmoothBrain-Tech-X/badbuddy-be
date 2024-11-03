@@ -27,6 +27,7 @@ func NewVenueUseCase(venueRepo interfaces.VenueRepository, userRepo interfaces.U
 }
 
 func (uc *useCase) CreateVenue(ctx context.Context, ownerID uuid.UUID, req requests.CreateVenueRequest) (*responses.VenueResponse, error) {
+
 	venue := &models.Venue{
 		ID:          uuid.New(),
 		Name:        req.Name,
@@ -48,7 +49,7 @@ func (uc *useCase) CreateVenue(ctx context.Context, ownerID uuid.UUID, req reque
 	}
 
 	openRange := []responses.OpenRangeResponse{}
-	err := unMarshalJSON(venue.OpenRange, openRange)
+	err := unMarshalJSON(venue.OpenRange, &openRange)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding enroll response: %v", err)
 	}
@@ -374,12 +375,12 @@ func (uc *useCase) GetReviews(ctx context.Context, venueID uuid.UUID, limit, off
 	return reviewResponses, nil
 }
 
-func mustMarshalJSON(v interface{}) json.RawMessage {
+func mustMarshalJSON(v interface{}) []byte {
 	data, err := json.Marshal(v)
 	if err != nil {
 		panic(fmt.Sprintf("failed to marshal JSON: %v", err))
 	}
-	return json.RawMessage(data)
+	return data
 }
 
 func unMarshalJSON(data json.RawMessage, v interface{}) error {

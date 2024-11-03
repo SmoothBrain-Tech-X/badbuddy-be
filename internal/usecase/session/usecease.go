@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -61,14 +62,21 @@ func (uc *useCase) CreateSession(ctx context.Context, hostID uuid.UUID, req requ
 		return nil, fmt.Errorf("invalid end time: %w", err)
 	}
 
-	// Validate session time including venue operating hours
-	venueOpenTime, _ := time.Parse("15:04", venue.OpenTime)
-	venueCloseTime, _ := time.Parse("15:04", venue.CloseTime)
-	if err := uc.validateSessionTime(sessionDate, startTime, endTime, venueOpenTime, venueCloseTime); err != nil {
-		return nil, err
+	// Parse and validate court IDs
+	openRanges := []responses.OpenRangeResponse{}
+	if unMarshalJSON(venue.OpenRange, openRanges) != nil {
+		return nil, fmt.Errorf("error decoding enroll response: %v", err)
 	}
 
-	// Parse and validate court IDs
+	// Validate session time including venue operating hours
+	for _, openRange := range openRanges {
+		venueOpenTime, _ := time.Parse("15:04", openRange.OpenTime.String())
+		venueCloseTime, _ := time.Parse("15:04", openRange.CloseTime.String())
+		if err := uc.validateSessionTime(sessionDate, startTime, endTime, venueOpenTime, venueCloseTime); err != nil {
+			return nil, err
+		}
+	}
+
 	courtIDs := make([]uuid.UUID, len(req.CourtIDs))
 	for i, courtIDStr := range req.CourtIDs {
 		courtID, err := uuid.Parse(courtIDStr)
@@ -612,5 +620,12 @@ func (uc *useCase) canJoinSession(session *models.SessionDetail, userID uuid.UUI
 		return fmt.Errorf("cannot join session that has already started")
 	}
 
+	return nil
+}
+
+func unMarshalJSON(data json.RawMessage, v interface{}) error {
+	if err := json.Unmarshal(data, v); err != nil {
+		return fmt.Errorf("failed to unmarshal JSON: %w", err)
+	}
 	return nil
 }

@@ -1,7 +1,6 @@
 package requests
 
 import (
-	"encoding/json"
 	"time"
 )
 
@@ -23,15 +22,15 @@ type OpenRange struct {
 }
 
 type UpdateVenueRequest struct {
-	Name        string          `json:"name"`
-	Description string          `json:"description"`
-	Address     string          `json:"address"`
-	Location    string          `json:"location"`
-	Phone       string          `json:"phone"`
-	Email       string          `json:"email"`
-	OpenRange   json.RawMessage `json:"open_range" validate:"required"`
-	ImageURLs   string          `json:"image_urls"`
-	Status      string          `json:"status"`
+	Name        string      `json:"name"`
+	Description string      `json:"description"`
+	Address     string      `json:"address"`
+	Location    string      `json:"location"`
+	Phone       string      `json:"phone"`
+	Email       string      `json:"email"`
+	OpenRange   []OpenRange `json:"open_range" validate:"required"`
+	ImageURLs   string      `json:"image_urls"`
+	Status      string      `json:"status"`
 }
 
 type CreateCourtRequest struct {
