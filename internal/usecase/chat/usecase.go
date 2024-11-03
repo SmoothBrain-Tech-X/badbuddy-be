@@ -81,22 +81,22 @@ func (uc *useCase) GetChatMessageByID(ctx context.Context, chatID uuid.UUID, lim
 
 }
 
-func (uc *useCase) SendMessage(ctx context.Context, userID, chatID uuid.UUID, req requests.SendAndUpdateMessageRequest) error {
+func (uc *useCase) SendMessage(ctx context.Context, userID, chatID uuid.UUID, req requests.SendAndUpdateMessageRequest) (*responses.ChatMassageResponse, error) {
 	if req.Message == "" {
-		return ErrValidation
+		return nil, ErrValidation
 	}
 
 	isPartOfChat, err := uc.chatRepo.IsUserPartOfChat(ctx, userID, chatID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if !isPartOfChat {
-		return ErrUnauthorized
+		return nil, ErrUnauthorized
 	}
 
 	_, err = uc.chatRepo.GetChatByID(ctx, chatID)
 	if err != nil {
-		return ErrChatNotFound
+		return nil, ErrChatNotFound
 	}
 
 	message := models.Message{
@@ -108,12 +108,32 @@ func (uc *useCase) SendMessage(ctx context.Context, userID, chatID uuid.UUID, re
 		Status:   models.MessageStatusSent,
 	}
 
-	err = uc.chatRepo.SaveMessage(ctx, &message)
+	messageReturn, err := uc.chatRepo.SaveMessage(ctx, &message)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	chatMessage := responses.ChatMassageResponse{
+		ID:     messageReturn.ID.String(),
+		ChatID: messageReturn.ChatID.String(),
+		Autor: responses.UserResponse{
+			ID:           messageReturn.SenderID.String(),
+			Email:        messageReturn.Email,
+			FirstName:    messageReturn.FirstName,
+			LastName:     messageReturn.LastName,
+			Phone:        messageReturn.Phone,
+			PlayLevel:    string(messageReturn.PlayLevel),
+			Location:     *messageReturn.Location,
+			Bio:          *messageReturn.Bio,
+			AvatarURL:    *messageReturn.AvatarURL,
+			LastActiveAt: messageReturn.LastActiveAt,
+		},
+		Message:       messageReturn.Content,
+		Timestamp:     messageReturn.CreatedAt,
+		EditTimeStamp: messageReturn.UpdatedAt,
+	}
+
+	return &chatMessage, nil
 }
 
 func (uc *useCase) DeleteMessage(ctx context.Context, chatID, messageID, userID uuid.UUID) error {

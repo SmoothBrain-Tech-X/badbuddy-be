@@ -2,13 +2,14 @@ package main
 
 import (
 	"badbuddy/internal/delivery/http/rest"
+	"badbuddy/internal/delivery/http/ws"
 	"badbuddy/internal/infrastructure/database"
 	"badbuddy/internal/infrastructure/server"
 	"badbuddy/internal/repositories/postgres"
+	"badbuddy/internal/usecase/chat"
 	"badbuddy/internal/usecase/session"
 	"badbuddy/internal/usecase/user"
 	"badbuddy/internal/usecase/venue"
-	"badbuddy/internal/usecase/chat"
 	"fmt"
 	"log"
 	"os"
@@ -46,6 +47,8 @@ func main() {
 
 	app := server.NewFiberServer()
 
+	chatHub := ws.NewChatHub()
+
 	userRepo := postgres.NewUserRepository(db)
 	userUseCase := user.NewUserUseCase(userRepo, "your-jwt-secret", 24*time.Hour)
 	userHandler := rest.NewUserHandler(userUseCase)
@@ -63,8 +66,10 @@ func main() {
 
 	chatRepo := postgres.NewChatRepository(db)
 	chatUseCase := chat.NewChatUseCase(chatRepo, userRepo)
-	chatHandler := rest.NewChatHandler(chatUseCase)
+	chatHandler := rest.NewChatHandler(chatUseCase, chatHub)
 	chatHandler.SetupChatRoutes(app)
+
+	app.Get("/ws/:chat_id", ws.ChatWebSocketHandler(chatHub))
 
 	//add heatlh check and ready check
 
