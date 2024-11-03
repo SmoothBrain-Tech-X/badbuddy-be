@@ -241,13 +241,21 @@ func (uc *useCase) SearchUsers(ctx context.Context, query string, filters reques
 }
 
 func (uc *useCase) mapUserToResponse(user *models.User) responses.UserResponse {
+	var userID string
+
+	if user.ID != uuid.Nil {
+		userID = user.ID.String()
+	}
+
 	return responses.UserResponse{
-		ID:           user.ID.String(),
+		ID:           userID,
 		Email:        user.Email,
 		FirstName:    user.FirstName,
 		LastName:     user.LastName,
 		Phone:        user.Phone,
 		PlayLevel:    string(user.PlayLevel),
+		Gender:       user.Gender,
+		PlayHand:     user.PlayHand,
 		Location:     user.Location,
 		Bio:          user.Bio,
 		AvatarURL:    user.AvatarURL,

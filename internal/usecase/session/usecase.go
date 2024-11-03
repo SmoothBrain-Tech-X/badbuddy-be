@@ -64,7 +64,8 @@ func (uc *useCase) CreateSession(ctx context.Context, hostID uuid.UUID, req requ
 
 	// Parse and validate court IDs
 	openRanges := []responses.OpenRangeResponse{}
-	if unMarshalJSON(venue.OpenRange, openRanges) != nil {
+
+	if unMarshalJSON(json.RawMessage(venue.OpenRange.RawMessage), &openRanges) != nil {
 		return nil, fmt.Errorf("error decoding enroll response: %v", err)
 	}
 
@@ -646,4 +647,44 @@ func unMarshalJSON(data json.RawMessage, v interface{}) error {
 		return fmt.Errorf("failed to unmarshal JSON: %w", err)
 	}
 	return nil
+}
+func unmarshalOpenRanges(data string) ([]responses.OpenRangeResponse, error) {
+	if data == "" {
+		return []responses.OpenRangeResponse{}, nil
+	}
+
+	// First unmarshal into an intermediate structure with string times
+	type intermediateRange struct {
+		Day       string `json:"day"`
+		OpenTime  string `json:"openTime"`
+		CloseTime string `json:"closeTime"`
+	}
+
+	var intermediate []intermediateRange
+	err := json.Unmarshal([]byte(data), &intermediate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal open ranges: %w", err)
+	}
+
+	// Convert to final structure with proper time.Time values
+	openRanges := make([]responses.OpenRangeResponse, len(intermediate))
+	for i, r := range intermediate {
+		openTime, err := time.Parse("15:04", r.OpenTime)
+		if err != nil {
+			return nil, fmt.Errorf("invalid open time format for day %s: %w", r.Day, err)
+		}
+
+		closeTime, err := time.Parse("15:04", r.CloseTime)
+		if err != nil {
+			return nil, fmt.Errorf("invalid close time format for day %s: %w", r.Day, err)
+		}
+
+		openRanges[i] = responses.OpenRangeResponse{
+			Day:       r.Day,
+			OpenTime:  openTime,
+			CloseTime: closeTime,
+		}
+	}
+
+	return openRanges, nil
 }

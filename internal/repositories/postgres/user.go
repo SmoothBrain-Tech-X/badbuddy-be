@@ -1,4 +1,3 @@
-// postgres/user_repository.go
 package postgres
 
 import (
@@ -34,13 +33,13 @@ func (r *userRepository) Create(ctx context.Context, user *models.User) error {
 	query := `
         INSERT INTO users (
             id, email, password, first_name, last_name,
-            phone, play_level, location, bio, 
-          avatar_url, status, 
-            created_at,last_active_at
+            phone, play_level,play_hand, location, bio, 
+            avatar_url, status, gender,
+            created_at, last_active_at
         ) VALUES (
             :id, :email, :password, :first_name, :last_name,
-            :phone, :play_level, :location, :bio,
-           :avatar_url, :status,
+            :phone, :play_level,:play_hand, :location, :bio,
+            :avatar_url, :status, :gender,
             :created_at, :last_active_at
         )`
 
@@ -136,76 +135,69 @@ func (r *userRepository) Update(ctx context.Context, user *models.User) error {
 
 func (r *userRepository) GetProfile(ctx context.Context, userID uuid.UUID) (*models.UserProfile, error) {
 	query := `
-        -- First, create a view or use a CTE to calculate regular partners
-WITH session_counts AS (
-    -- Count sessions played together between pairs of players
-    SELECT 
-        CASE 
-            WHEN sp1.user_id < sp2.user_id THEN sp1.user_id 
-            ELSE sp2.user_id 
-        END as player1_id,
-        CASE 
-            WHEN sp1.user_id < sp2.user_id THEN sp2.user_id 
-            ELSE sp1.user_id 
-        END as player2_id,
-        COUNT(DISTINCT sp1.session_id) as sessions_together
-    FROM session_participants sp1
-    JOIN session_participants sp2 ON sp1.session_id = sp2.session_id 
-        AND sp1.user_id != sp2.user_id
-    JOIN play_sessions ps ON ps.id = sp1.session_id 
-        AND ps.status != 'cancelled'
-    GROUP BY 
-        CASE 
-            WHEN sp1.user_id < sp2.user_id THEN sp1.user_id 
-            ELSE sp2.user_id 
-        END,
-        CASE 
-            WHEN sp1.user_id < sp2.user_id THEN sp2.user_id 
-            ELSE sp1.user_id 
-        END
-    HAVING COUNT(DISTINCT sp1.session_id) >= 3
-),
-user_stats AS (
-    SELECT 
-        u.*,
-        -- Hosted sessions (excluding cancelled)
-        COUNT(DISTINCT ps.id) FILTER (
-            WHERE ps.host_id = u.id 
-            AND ps.status != 'cancelled'
-        ) as hosted_sessions,
-        
-        -- Joined sessions (excluding cancelled)
-        COUNT(DISTINCT sp.session_id) FILTER (
-            WHERE ps.status != 'cancelled'
-            AND ps.host_id != u.id
-        ) as joined_sessions,
-        
-        -- Average rating
-        COALESCE(AVG(pr.rating), 0) as avg_rating,
-        
-        -- Total reviews received
-        COUNT(DISTINCT pr.id) as total_reviews,
-        
-        -- Regular partners (played 3 or more sessions together)
-        COALESCE((
-            SELECT COUNT(DISTINCT 
+        WITH session_counts AS (
+            SELECT 
                 CASE 
-                    WHEN sc.player1_id = u.id THEN sc.player2_id 
-                    ELSE sc.player1_id 
+                    WHEN sp1.user_id < sp2.user_id THEN sp1.user_id 
+                    ELSE sp2.user_id 
+                END as player1_id,
+                CASE 
+                    WHEN sp1.user_id < sp2.user_id THEN sp2.user_id 
+                    ELSE sp1.user_id 
+                END as player2_id,
+                COUNT(DISTINCT sp1.session_id) as sessions_together
+            FROM session_participants sp1
+            JOIN session_participants sp2 ON sp1.session_id = sp2.session_id 
+                AND sp1.user_id != sp2.user_id
+            JOIN play_sessions ps ON ps.id = sp1.session_id 
+                AND ps.status != 'cancelled'
+            GROUP BY 
+                CASE 
+                    WHEN sp1.user_id < sp2.user_id THEN sp1.user_id 
+                    ELSE sp2.user_id 
+                END,
+                CASE 
+                    WHEN sp1.user_id < sp2.user_id THEN sp2.user_id 
+                    ELSE sp1.user_id 
                 END
-            )
-            FROM session_counts sc
-            WHERE sc.player1_id = u.id 
-            OR sc.player2_id = u.id
-        ), 0) as regular_partners
-    FROM users u
-    LEFT JOIN play_sessions ps ON ps.host_id = u.id
-    LEFT JOIN session_participants sp ON sp.user_id = u.id
-    LEFT JOIN player_reviews pr ON pr.reviewed_id = u.id
-    WHERE u.id = $1 AND u.status != $2
-    GROUP BY u.id
-)
-SELECT * FROM user_stats;`
+            HAVING COUNT(DISTINCT sp1.session_id) >= 3
+        ),
+        user_stats AS (
+            SELECT 
+                u.*,
+                COUNT(DISTINCT ps.id) FILTER (
+                    WHERE ps.host_id = u.id 
+                    AND ps.status != 'cancelled'
+                ) as hosted_sessions,
+                
+                COUNT(DISTINCT sp.session_id) FILTER (
+                    WHERE ps.status != 'cancelled'
+                    AND ps.host_id != u.id
+                ) as joined_sessions,
+                
+                COALESCE(AVG(pr.rating), 0) as avg_rating,
+                
+                COUNT(DISTINCT pr.id) as total_reviews,
+                
+                COALESCE((
+                    SELECT COUNT(DISTINCT 
+                        CASE 
+                            WHEN sc.player1_id = u.id THEN sc.player2_id 
+                            ELSE sc.player1_id 
+                        END
+                    )
+                    FROM session_counts sc
+                    WHERE sc.player1_id = u.id 
+                    OR sc.player2_id = u.id
+                ), 0) as regular_partners
+            FROM users u
+            LEFT JOIN play_sessions ps ON ps.host_id = u.id
+            LEFT JOIN session_participants sp ON sp.user_id = u.id
+            LEFT JOIN player_reviews pr ON pr.reviewed_id = u.id
+            WHERE u.id = $1 AND u.status != $2
+            GROUP BY u.id
+        )
+        SELECT * FROM user_stats;`
 
 	var profile models.UserProfile
 	err := r.db.GetContext(ctx, &profile, query, userID, models.UserStatusInactive)
@@ -244,12 +236,33 @@ func (r *userRepository) UpdateLastActive(ctx context.Context, userID uuid.UUID)
 
 func (r *userRepository) SearchUsers(ctx context.Context, query string, filters interfaces.UserSearchFilters) ([]models.User, error) {
 	queryBuilder := `
-        SELECT * FROM users
-        WHERE status != $1
-        AND search_vector @@ plainto_tsquery($2)`
+        SELECT 
+            id,
+            email,
+            password,
+            first_name,
+            last_name,
+            phone,
+            play_level,
+            location,
+            bio,
+            avatar_url,
+            status,
+            gender,
+            play_hand,
+            created_at,
+            last_active_at
+        FROM users
+        WHERE status != $1`
 
-	args := []interface{}{models.UserStatusInactive, query}
-	argCount := 3
+	args := []interface{}{models.UserStatusInactive}
+	argCount := 2
+
+	if query != "" {
+		queryBuilder += fmt.Sprintf(" AND search_vector @@ plainto_tsquery('english', $%d)", argCount)
+		args = append(args, query)
+		argCount++
+	}
 
 	if filters.PlayLevel != "" {
 		queryBuilder += fmt.Sprintf(" AND play_level = $%d", argCount)
@@ -263,13 +276,20 @@ func (r *userRepository) SearchUsers(ctx context.Context, query string, filters 
 		argCount++
 	}
 
-	// Add ordering
 	queryBuilder += `
         ORDER BY 
-            CASE WHEN last_active_at > NOW() - INTERVAL '7 days' THEN 1 ELSE 0 END DESC,
-            ts_rank(search_vector, plainto_tsquery($2)) DESC,
-            created_at DESC
-        LIMIT $%d OFFSET $%d`
+            CASE WHEN last_active_at > NOW() - INTERVAL '7 days' THEN 1 ELSE 0 END DESC`
+
+	if query != "" {
+		queryBuilder += fmt.Sprintf(`,
+            ts_rank(search_vector, plainto_tsquery('english', $2)) DESC`)
+	}
+
+	queryBuilder += `,
+            created_at DESC`
+
+	queryBuilder += fmt.Sprintf(`
+        LIMIT $%d OFFSET $%d`, argCount, argCount+1)
 
 	args = append(args, filters.Limit, filters.Offset)
 
