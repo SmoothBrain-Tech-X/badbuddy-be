@@ -86,7 +86,7 @@ func (uc *useCase) GetVenue(ctx context.Context, id uuid.UUID) (*responses.Venue
 	}
 
 	openRange := []responses.OpenRangeResponse{}
-	if unMarshalJSON(venueWithCourts.OpenRange, openRange) != nil {
+	if unMarshalJSON(venueWithCourts.OpenRange, &openRange) != nil {
 		return nil, fmt.Errorf("error decoding enroll response: %v", err)
 	}
 	return &responses.VenueResponse{
@@ -159,7 +159,7 @@ func (uc *useCase) ListVenues(ctx context.Context, location string, limit, offse
 	for i, venue := range venues {
 
 		openRange := []responses.OpenRangeResponse{}
-		if unMarshalJSON(venue.OpenRange, openRange) != nil {
+		if unMarshalJSON(venue.OpenRange, &openRange) != nil {
 			return nil, fmt.Errorf("error decoding enroll response: %v", err)
 		}
 		venueResponses[i] = responses.VenueResponse{
@@ -190,8 +190,8 @@ func (uc *useCase) SearchVenues(ctx context.Context, query string, limit, offset
 	venueResponses := make([]responses.VenueResponse, len(venues))
 	for i, venue := range venues {
 		openRange := []responses.OpenRangeResponse{}
-		if unMarshalJSON(venue.OpenRange, openRange) != nil {
-			return nil, fmt.Errorf("error decoding enroll response: %v", err)
+		if err := unMarshalJSON(venue.OpenRange, &openRange); err != nil {
+			return responses.VenueResponseDTO{}, fmt.Errorf("error decoding enroll response: %v", err)
 		}
 		venueResponses[i] = responses.VenueResponse{
 			ID:           venue.ID.String(),
@@ -210,6 +210,9 @@ func (uc *useCase) SearchVenues(ctx context.Context, query string, limit, offset
 	}
 
 	total, err := uc.venueRepo.CountVenues(ctx)
+	if err != nil {
+		return responses.VenueResponseDTO{}, fmt.Errorf("failed to count venues: %w", err)
+	}
 
 	return responses.VenueResponseDTO{
 		Venues: venueResponses,
