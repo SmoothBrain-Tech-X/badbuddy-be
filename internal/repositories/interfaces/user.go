@@ -25,4 +25,5 @@ type UserRepository interface {
 	UpdateLastActive(ctx context.Context, userID uuid.UUID) error
 	SearchUsers(ctx context.Context, query string, filters UserSearchFilters) ([]models.User, error)
 	GetVenueUserOwn(ctx context.Context, userID uuid.UUID) ([]models.VenueUserOwn, error)
+	IsUserExist(ctx context.Context, userID uuid.UUID) (bool, error)
 }

@@ -3,6 +3,7 @@ package responses
 import "time"
 
 type ChatMassageListResponse struct {
+	ChatID      string                `json:"chat_id"`
 	ChatMassage []ChatMassageResponse `json:"chat_massage"`
 }
 

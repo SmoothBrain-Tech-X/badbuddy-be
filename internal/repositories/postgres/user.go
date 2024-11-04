@@ -328,3 +328,16 @@ func (r *userRepository) GetVenueUserOwn(ctx context.Context, userID uuid.UUID) 
 
 	return venues, nil
 }
+
+func (r *userRepository) IsUserExist(ctx context.Context, userID uuid.UUID) (bool, error) {
+	var count int
+	err := r.db.GetContext(ctx, &count, `
+		SELECT COUNT(*) FROM users WHERE id = $1`,
+		userID)
+
+	if err != nil {
+		return false, fmt.Errorf("failed to check user id: %w", err)
+	}
+
+	return count > 0, nil
+}

@@ -7,6 +7,7 @@ import (
 	"badbuddy/internal/repositories/interfaces"
 	"context"
 	"errors"
+
 	"github.com/google/uuid"
 )
 
@@ -76,6 +77,7 @@ func (uc *useCase) GetChatMessageByID(ctx context.Context, chatID uuid.UUID, lim
 	}
 
 	return &responses.ChatMassageListResponse{
+		ChatID:      chatID.String(),
 		ChatMassage: chatMassage,
 	}, nil
 
@@ -276,6 +278,25 @@ func (uc *useCase) GetUsersInChat(ctx context.Context, chatID uuid.UUID, userID 
 	return &responses.UserListResponse{
 		Users: convertToUserListResponse(*users),
 	}, nil
+}
+
+func (uc *useCase) GetDirectChat(ctx context.Context, userID uuid.UUID, otherUserUUID uuid.UUID, limit int, offset int) (*responses.ChatMassageListResponse, error) {
+	isOtherUserExist, err := uc.userRepo.IsUserExist(ctx, otherUserUUID)
+	if err != nil {
+		return nil, err
+	}
+	if !isOtherUserExist {
+		return nil, ErrValidation
+	}
+
+
+	chat_id, err := uc.chatRepo.GetDirectChatID(ctx, userID, otherUserUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	return uc.GetChatMessageByID(ctx, chat_id, limit, offset, userID)
+
 }
 
 func convertToUserListResponse(users []models.User) []responses.UserChatResponse {

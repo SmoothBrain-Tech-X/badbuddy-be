@@ -4,6 +4,7 @@ import (
 	"badbuddy/internal/domain/models"
 	"badbuddy/internal/repositories/interfaces"
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -361,4 +362,41 @@ func (r *chatRepository) GetUsersInChat(ctx context.Context, chatID uuid.UUID) (
 	}
 
 	return &users, nil
+}
+
+func (r *chatRepository) GetDirectChatID(ctx context.Context, userID, otherUserUUID uuid.UUID) (uuid.UUID, error) {
+	var chatID uuid.UUID
+
+	query := `
+		SELECT 
+			chat_id
+		FROM 
+			chat_participants
+		WHERE 
+			user_id = $1
+			AND chat_id IN (SELECT chat_id FROM chat_participants WHERE user_id = $2)`
+
+	err := r.db.GetContext(ctx, &chatID, query, userID, otherUserUUID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			if chatID == uuid.Nil {
+				chatID = uuid.New()
+				query = `INSERT INTO chats (id, type) VALUES ($1, 'direct')`
+				_, err = r.db.ExecContext(ctx, query, chatID)
+				if err != nil {
+					return uuid.Nil, err
+				}
+
+				query = `INSERT INTO chat_participants (id, chat_id, user_id) VALUES ($1, $2, $3), ($4, $2, $5)`
+				_, err = r.db.ExecContext(ctx, query, uuid.New(), chatID, userID, uuid.New(), otherUserUUID)
+				if err != nil {
+					return uuid.Nil, err
+				}
+			}
+		} else {
+			return uuid.Nil, err
+		}
+	}
+
+	return chatID, nil
 }
