@@ -84,17 +84,18 @@ func (r *bookingRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.
 
 func (r *bookingRepository) List(ctx context.Context, userID uuid.UUID, filters map[string]interface{}, limit, offset int) ([]models.CourtBooking, error) {
 	query := `
-		SELECT 
-			b.*,
+		SELECT
+			cb.*,
 			c.name as court_name,
 			c.price_per_hour,
 			v.name as venue_name,
 			v.location as venue_location,
 			u.first_name || ' ' || u.last_name as user_name
-		FROM court_bookings b
-		JOIN courts c ON c.id = b.court_id
-		JOIN venues v ON v.id = c.venue_id
-		JOIN users u ON u.id = b.user_id
+		FROM
+		users u
+		JOIN venues v ON v.owner_id = u.id
+		JOIN courts c ON c.venue_id = v.id
+		JOIN court_bookings cb ON cb.court_id = c.id
 		WHERE 1=1`
 
 	args := []interface{}{}
@@ -125,7 +126,7 @@ func (r *bookingRepository) List(ctx context.Context, userID uuid.UUID, filters 
 	}
 
 	if userID != uuid.Nil {
-		query += fmt.Sprintf(" AND b.user_id = $%d", argCount)
+		query += fmt.Sprintf(" AND u.id = $%d", argCount)
 		args = append(args, userID)
 		argCount++
 	}
@@ -438,11 +439,13 @@ func (r *bookingRepository) UpdatePayment(ctx context.Context, payment *models.P
 
 func (r *bookingRepository) Count(ctx context.Context, userID uuid.UUID, filters map[string]interface{}) (int, error) {
 	query := `
-		SELECT COUNT(*)
-		FROM court_bookings b
-		JOIN courts c ON c.id = b.court_id
-		JOIN venues v ON v.id = c.venue_id
-		JOIN users u ON u.id = b.user_id
+		SELECT
+			COUNT(*)
+		FROM
+		users u
+		JOIN venues v ON v.owner_id = u.id
+		JOIN courts c ON c.venue_id = v.id
+		JOIN court_bookings cb ON cb.court_id = c.id
 		WHERE 1=1`
 
 	args := []interface{}{}
@@ -473,7 +476,7 @@ func (r *bookingRepository) Count(ctx context.Context, userID uuid.UUID, filters
 	}
 
 	if userID != uuid.Nil {
-		query += fmt.Sprintf(" AND b.user_id = $%d", argCount)
+		query += fmt.Sprintf(" AND u.id = $%d", argCount)
 		args = append(args, userID)
 		argCount++
 	}
