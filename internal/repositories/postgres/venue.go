@@ -319,33 +319,56 @@ func (r *venueRepository) CountVenues(ctx context.Context) (int, error) {
 
 func (r *venueRepository) Search(ctx context.Context, query string, limit, offset int, minPrice, maxPrice int, location string, facilities []string) ([]models.Venue, error) {
 	searchQuery := `
-		SELECT 
-			v.id, v.name, v.description, v.address, v.location, v.phone, v.email,
-			v.open_range, v.image_urls, v.status, v.rating, v.total_reviews, v.owner_id,
-			v.created_at, v.updated_at, v.rules, v.latitude, v.longitude,
-			COALESCE(json_agg(
-				json_build_object('id', f.id, 'name', f.name)
-			) FILTER (WHERE f.id IS NOT NULL), '[]') AS facilities,
-			COALESCE(json_agg(
-				json_build_object('id', c.id, 'name', c.name, 'description', c.description, 'price_per_hour', c.price_per_hour, 'status', c.status)
-			) FILTER (WHERE c.id IS NOT NULL), '[]') AS courts
-		FROM 
-			venues v
-		LEFT JOIN 
-			venues_facilities vf ON v.id = vf.venue_id
-		LEFT JOIN 
-			facilities f ON vf.facility_id = f.id
-		LEFT JOIN
-			courts c ON v.id = c.venue_id
-		WHERE 
-			v.deleted_at IS NULL
-			AND (
-				v.search_vector @@ plainto_tsquery($1)
-				OR v.name ILIKE '%' || $1 || '%'
-			)
-			AND ($3 = -99 OR c.price_per_hour >= $3)
-			AND ($4 = -99 OR c.price_per_hour <= $4)
-			AND ($2 = '' OR v.location = $2)`
+			SELECT 
+				v.id, v.name, v.description, v.address, v.location, v.phone, v.email,
+				v.open_range, v.image_urls, v.status, v.rating, v.total_reviews, v.owner_id,
+				v.created_at, v.updated_at, v.rules, v.latitude, v.longitude,
+				COALESCE(
+					(
+						SELECT json_agg(json_build_object('id', unique_facilities.id, 'name', unique_facilities.name))
+						FROM (
+							SELECT DISTINCT f.id, f.name
+							FROM venues_facilities vf
+							JOIN facilities f ON vf.facility_id = f.id
+							WHERE vf.venue_id = v.id
+						) AS unique_facilities
+					), '[]'
+				) AS facilities,
+				COALESCE(
+					(
+						SELECT json_agg(json_build_object(
+							'id', unique_courts.id, 
+							'name', unique_courts.name, 
+							'description', unique_courts.description, 
+							'price_per_hour', unique_courts.price_per_hour, 
+							'status', unique_courts.status
+						))
+						FROM (
+							SELECT DISTINCT c.id, c.name, c.description, c.price_per_hour, c.status
+							FROM courts c
+							WHERE c.venue_id = v.id
+						) AS unique_courts
+					), '[]'
+				) AS courts
+			FROM 
+				venues v
+			WHERE 
+				v.deleted_at IS NULL
+				AND (
+					v.search_vector @@ plainto_tsquery($1)
+					OR v.name ILIKE '%' || $1 || '%'
+				)
+				AND ($3 = -99 OR EXISTS (
+					SELECT 1 
+					FROM courts c 
+					WHERE c.venue_id = v.id AND c.price_per_hour >= $3
+				))
+				AND ($4 = -99 OR EXISTS (
+					SELECT 1 
+					FROM courts c 
+					WHERE c.venue_id = v.id AND c.price_per_hour <= $4
+				))
+				AND ($2 = '' OR v.location = $2)`
 
 	// Add facilities filter if provided
 	if len(facilities) > 0 {
