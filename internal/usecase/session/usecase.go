@@ -630,6 +630,7 @@ func (uc *useCase) toSessionResponse(session *models.SessionDetail) *responses.S
 		Description:               description,
 		VenueName:                 session.VenueName,
 		VenueLocation:             session.VenueLocation,
+		HostID:                    session.HostID.String(),
 		HostName:                  session.HostName,
 		HostLevel:                 string(session.HostLevel),
 		SessionDate:               session.SessionDate.Format("2006-01-02"),

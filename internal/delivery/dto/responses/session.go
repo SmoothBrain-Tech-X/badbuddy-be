@@ -21,6 +21,7 @@ type SessionResponse struct {
 	Description               string                `json:"description"`
 	VenueName                 string                `json:"venue_name"`
 	VenueLocation             string                `json:"venue_location"`
+	HostID                    string                `json:"host_id"`
 	HostName                  string                `json:"host_name"`
 	HostLevel                 string                `json:"host_level"`
 	SessionDate               string                `json:"session_date"`
