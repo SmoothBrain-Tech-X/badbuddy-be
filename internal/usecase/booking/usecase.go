@@ -427,8 +427,12 @@ func (uc *useCase) UpdatePayment(ctx context.Context, id uuid.UUID, userID uuid.
 	if err != nil {
 		return nil, fmt.Errorf("payment not found: %w", err)
 	}
+	user, err := uc.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("user not found: %w", err)
+	}
 
-	if payment.UserID != userID { // check if user is admin will pass this check
+	if payment.UserID != userID && user.Role != string(models.UserRoleAdmin) {
 		return nil, fmt.Errorf("unauthorized to update this payment")
 	}
 

@@ -85,6 +85,7 @@ func (uc *useCase) Register(ctx context.Context, req requests.RegisterRequest) e
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
+	fmt.Print(req.PlayHand)
 
 	user := &models.User{
 		ID:        uuid.New(),
@@ -94,6 +95,8 @@ func (uc *useCase) Register(ctx context.Context, req requests.RegisterRequest) e
 		LastName:  req.LastName,
 		Phone:     req.Phone,
 		PlayLevel: models.PlayerLevel(req.PlayLevel),
+		Gender:    req.Gender,
+		PlayHand:  req.PlayHand,
 		Location:  req.Location,
 		Bio:       req.Bio,
 		Status:    models.UserStatusActive,
@@ -126,7 +129,7 @@ func (uc *useCase) Login(ctx context.Context, req requests.LoginRequest) (*respo
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
 		fmt.Println(err)
 		return nil, ErrInvalidCredentials
-	} 
+	}
 
 	if user.Status != models.UserStatusActive {
 		return nil, fmt.Errorf("account is not active")
