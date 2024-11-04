@@ -128,9 +128,17 @@ func (r *courtRepository) List(ctx context.Context, filters map[string]interface
 	query += " ORDER BY c.created_at DESC"
 
 	// Add pagination
-	query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", argCount, argCount+1)
-	args = append(args, limit, offset)
+	if limit > 0 {
+		query += fmt.Sprintf(" LIMIT $%d", argCount)
+		args = append(args, limit)
+		argCount++
+	}
 
+	if offset > 0 {
+		query += fmt.Sprintf(" OFFSET $%d", argCount)
+		args = append(args, offset)
+		argCount++
+	}
 	var courts []models.Court
 	err := r.db.SelectContext(ctx, &courts, query, args...)
 	if err != nil {

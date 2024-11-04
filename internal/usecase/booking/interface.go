@@ -21,6 +21,7 @@ type UseCase interface {
 	GetPayment(ctx context.Context, id uuid.UUID) (*responses.PaymentResponse, error)
 	CreatePayment(ctx context.Context, id uuid.UUID, userID uuid.UUID, req requests.CreatePaymentRequest) (*responses.PaymentResponse, error)
 	UpdatePayment(ctx context.Context, id uuid.UUID, userID uuid.UUID, req requests.UpdatePaymentRequest) (*responses.PaymentResponse, error)
+	ChangeCourtStatus(ctx context.Context) error
 }
 
 var (

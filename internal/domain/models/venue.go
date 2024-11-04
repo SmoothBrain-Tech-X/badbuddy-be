@@ -135,15 +135,18 @@ type VenueInsert struct {
 }
 
 type Court struct {
-	ID           uuid.UUID   `db:"id"`
-	VenueID      uuid.UUID   `db:"venue_id"`
-	Name         string      `db:"name"`
-	Description  string      `db:"description"`
-	PricePerHour float64     `db:"price_per_hour"`
-	Status       CourtStatus `db:"status"`
-	CreatedAt    time.Time   `db:"created_at"`
-	UpdatedAt    time.Time   `db:"updated_at"`
-	DeletedAt    *time.Time  `db:"deleted_at"`
+	ID            uuid.UUID   `db:"id"`
+	VenueID       uuid.UUID   `db:"venue_id"`
+	VenueName     string      `db:"venue_name"`
+	VenueLocation string      `db:"venue_location"`
+	VenueStatus   VenueStatus `db:"venue_status"`
+	Name          string      `db:"name"`
+	Description   string      `db:"description"`
+	PricePerHour  float64     `db:"price_per_hour"`
+	Status        CourtStatus `db:"status"`
+	CreatedAt     time.Time   `db:"created_at"`
+	UpdatedAt     time.Time   `db:"updated_at"`
+	DeletedAt     *time.Time  `db:"deleted_at"`
 }
 
 type VenueWithCourts struct {
