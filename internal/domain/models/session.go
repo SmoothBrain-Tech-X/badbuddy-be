@@ -73,4 +73,5 @@ type SessionDetail struct {
 	Participants     []SessionParticipant `db:"participants,omitempty"`
 	Rules            []SessionRule        `db:"rules,omitempty"`
 	Search_vector    string               `db:"search_vector"`
+	IsPublic         bool                 `db:"is_public"`
 }
