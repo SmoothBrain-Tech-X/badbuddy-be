@@ -275,6 +275,7 @@ func (r *userRepository) SearchUsers(ctx context.Context, query string, filters 
             avatar_url,
             status,
             gender,
+			role,
             play_hand,
             created_at,
             last_active_at
