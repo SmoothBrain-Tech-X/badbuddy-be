@@ -332,3 +332,33 @@ func (r *chatRepository) GetChats(ctx context.Context, userID uuid.UUID) (*[]mod
 
 	return &chats, nil
 }
+
+func (r *chatRepository) GetUsersInChat(ctx context.Context, chatID uuid.UUID) (*[]models.User, error) {
+	users := []models.User{}
+
+	query := `
+		SELECT
+			u.id,
+			u.email,
+			u.first_name,
+			u.last_name,
+			u.phone,
+			u.play_level,
+			u.location,
+			u.bio,
+			u.avatar_url,
+			u.last_active_at
+		FROM
+			chat_participants cp
+		JOIN
+			users u ON cp.user_id = u.id
+		WHERE
+			cp.chat_id = $1`
+
+	err := r.db.SelectContext(ctx, &users, query, chatID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &users, nil
+}

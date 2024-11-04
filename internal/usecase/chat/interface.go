@@ -18,4 +18,6 @@ type UseCase interface {
 	UpdateMessage(ctx context.Context, chatID uuid.UUID, messageID uuid.UUID, userID uuid.UUID, req requests.SendAndUpdateMessageRequest) error
 
 	GetChats(ctx context.Context, userID uuid.UUID) (*responses.ChatListResponse, error)
+
+	GetUsersInChat(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) (*responses.UserListResponse, error)
 }

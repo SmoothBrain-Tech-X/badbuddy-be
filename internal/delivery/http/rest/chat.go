@@ -39,6 +39,8 @@ func (h *ChatHandler) SetupChatRoutes(app *fiber.App) {
 	chat.Post("/:chatID/messages", h.SendMessage)
 	chat.Delete("/:chatID/messages/:messageID", h.DeleteMessage)
 	chat.Put("/:chatID/messages/:messageID", h.UpdateMessage)
+
+	chat.Get("/:chatID/users", h.GetUsersInChat)
 }
 
 func (h *ChatHandler) GetChatMessage(c *fiber.Ctx) error {
@@ -238,5 +240,25 @@ func (h *ChatHandler) GetChats(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(responses.SuccessResponse{
 		Message: "Chats retrieved successfully",
 		Data:    chats,
+	})
+}
+
+func (h *ChatHandler) GetUsersInChat(c *fiber.Ctx) error {
+	chatID := c.Params("chatID")
+	chatUUID, err := uuid.Parse(chatID)
+	if err != nil {
+		return h.handleError(c, errors.New("invalid chat ID format"))
+	}
+
+	userID := c.Locals("userID").(uuid.UUID)
+
+	users, err := h.chatUseCase.GetUsersInChat(c.Context(), chatUUID, userID)
+	if err != nil {
+		return h.handleError(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(responses.SuccessResponse{
+		Message: "Chat users retrieved successfully",
+		Data:    users,
 	})
 }

@@ -32,6 +32,10 @@ type ChatResponse struct {
 	Users       []UserChatResponse   `json:"users"`
 }
 
+type UserListResponse struct {
+	Users []UserChatResponse `json:"users"`
+}
+
 type UserChatResponse struct {
 	ID           string    `json:"id"`
 	Email        string    `json:"email"`

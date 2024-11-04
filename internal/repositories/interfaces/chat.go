@@ -21,4 +21,5 @@ type ChatRepository interface {
 	GetMessageByID(ctx context.Context, messageID uuid.UUID) (*models.Message, error) // Get a message by ID
 	IsUserIsSender(ctx context.Context, userID, messageID uuid.UUID) (bool, error)
 	GetChats(ctx context.Context, userID uuid.UUID) (*[]models.Chat, error)
+	GetUsersInChat(ctx context.Context, chatID uuid.UUID) (*[]models.User, error)
 }

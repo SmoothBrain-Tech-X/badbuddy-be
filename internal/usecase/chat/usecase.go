@@ -259,6 +259,46 @@ func (uc *useCase) GetChats(ctx context.Context, userID uuid.UUID) (*responses.C
 	}, nil
 }
 
+func (uc *useCase) GetUsersInChat(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) (*responses.UserListResponse, error) {
+	isPartOfChat, err := uc.chatRepo.IsUserPartOfChat(ctx, userID, chatID)
+	if err != nil {
+		return nil, err
+	}
+	if !isPartOfChat {
+		return nil, ErrUnauthorized
+	}
+
+	users, err := uc.chatRepo.GetUsersInChat(ctx, chatID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &responses.UserListResponse{
+		Users: convertToUserListResponse(*users),
+	}, nil
+}
+
+func convertToUserListResponse(users []models.User) []responses.UserChatResponse {
+	userResponses := []responses.UserChatResponse{}
+
+	for _, u := range users {
+		userResponses = append(userResponses, responses.UserChatResponse{
+			ID:           u.ID.String(),
+			Email:        u.Email,
+			FirstName:    u.FirstName,
+			LastName:     u.LastName,
+			Phone:        u.Phone,
+			PlayLevel:    string(u.PlayLevel),
+			Location:     u.Location,
+			Bio:          u.Bio,
+			AvatarURL:    u.AvatarURL,
+			LastActiveAt: u.LastActiveAt,
+		})
+	}
+
+	return userResponses
+}
+
 func convertToUserChatResponse(users []models.User) []responses.UserChatResponse {
 	userResponses := []responses.UserChatResponse{}
 
