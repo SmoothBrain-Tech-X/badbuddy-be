@@ -272,7 +272,6 @@ func convertToUserChatResponse(users []models.User) []responses.UserChatResponse
 			PlayLevel:    string(u.PlayLevel),
 			Location:     u.Location,
 			Bio:          u.Bio,
-			PlayHand:     string(u.PlayHand),
 			AvatarURL:    u.AvatarURL,
 			LastActiveAt: u.LastActiveAt,
 		})
