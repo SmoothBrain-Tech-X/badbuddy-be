@@ -138,7 +138,8 @@ func (r *userRepository) Update(ctx context.Context, user *models.User) error {
 			play_level = :play_level,
 			location = :location,
 			bio = :bio,
-			avatar_url = :avatar_url
+			avatar_url = :avatar_url,
+			role = :role
 		WHERE id = :id AND status != 'inactive'`
 
 	result, err := r.db.NamedExecContext(ctx, query, user)

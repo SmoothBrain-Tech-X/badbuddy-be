@@ -256,6 +256,29 @@ func (uc *useCase) GetVenueUserOwn(ctx context.Context, userID uuid.UUID) ([]res
 	return venueOwners, nil
 }
 
+func (uc *useCase) UpdateRoles(ctx context.Context, adminID uuid.UUID, req requests.UpdateRolesRequest) error {
+	isAdmin, err := uc.IsAdmin(ctx, adminID)
+	if err != nil {
+		return err
+	}
+
+	if !isAdmin {
+		return fmt.Errorf("unauthorized")
+	}
+
+	user, err := uc.userRepo.GetByID(ctx, uuid.MustParse(req.UserID))
+	if err != nil {
+		return ErrUserNotFound
+	}
+
+	user.Role = req.Role
+	if err := uc.userRepo.Update(ctx, user); err != nil {
+		return fmt.Errorf("failed to update user: %w", err)
+	}
+
+	return nil
+}
+
 func (uc *useCase) mapUserToResponse(user *models.User) responses.UserResponse {
 	var userID string
 

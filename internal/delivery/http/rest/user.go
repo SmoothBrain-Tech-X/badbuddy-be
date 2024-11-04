@@ -29,6 +29,7 @@ func (h *UserHandler) SetupUserRoutes(app *fiber.App) {
 	userGroup.Get("/profile", h.GetProfile)
 	userGroup.Put("/profile", h.UpdateProfile)
 	userGroup.Get("/search", h.SearchUsers)
+	userGroup.Put("/update/role", h.UpdateRoles)
 }
 
 func (h *UserHandler) Register(c *fiber.Ctx) error {
@@ -164,3 +165,31 @@ func (h *UserHandler) SearchUsers(c *fiber.Ctx) error {
 		"users": users,
 	})
 }
+
+func (h *UserHandler) UpdateRoles(c *fiber.Ctx) error {
+	userID := c.Locals("userID").(uuid.UUID)
+	if userID == uuid.Nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "unauthorized",
+		})
+	}
+
+	var req requests.UpdateRolesRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	if err := h.userUseCase.UpdateRoles(c.Context(), userID, req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"message": "Roles updated successfully",
+	})
+}
+
+
