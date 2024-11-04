@@ -7,6 +7,7 @@ import (
 	"badbuddy/internal/repositories/interfaces"
 	"context"
 	"errors"
+
 	"github.com/google/uuid"
 )
 
@@ -30,7 +31,7 @@ func NewChatUseCase(chatRepo interfaces.ChatRepository, userRepo interfaces.User
 	}
 }
 
-func (uc *useCase) GetChatMessageByID(ctx context.Context, chatID uuid.UUID, limit int, offset int, userID uuid.UUID) (*responses.ChatResponse, error) {
+func (uc *useCase) GetChatMessageByID(ctx context.Context, chatID uuid.UUID, limit int, offset int, userID uuid.UUID) (*responses.ChatMassageListResponse, error) {
 	isPartOfChat, err := uc.chatRepo.IsUserPartOfChat(ctx, userID, chatID)
 	if err != nil {
 		return nil, err
@@ -56,7 +57,7 @@ func (uc *useCase) GetChatMessageByID(ctx context.Context, chatID uuid.UUID, lim
 		chatMassage = append(chatMassage, responses.ChatMassageResponse{
 			ID:     m.ID.String(),
 			ChatID: m.ChatID.String(),
-			Autor: responses.UserResponse{
+			Autor: responses.UserChatResponse{
 				ID:           m.SenderID.String(),
 				Email:        m.Email,
 				FirstName:    m.FirstName,
@@ -75,7 +76,8 @@ func (uc *useCase) GetChatMessageByID(ctx context.Context, chatID uuid.UUID, lim
 
 	}
 
-	return &responses.ChatResponse{
+	return &responses.ChatMassageListResponse{
+		ChatID:      chatID.String(),
 		ChatMassage: chatMassage,
 	}, nil
 
@@ -116,7 +118,7 @@ func (uc *useCase) SendMessage(ctx context.Context, userID, chatID uuid.UUID, re
 	chatMessage := responses.ChatMassageResponse{
 		ID:     messageReturn.ID.String(),
 		ChatID: messageReturn.ChatID.String(),
-		Autor: responses.UserResponse{
+		Autor: responses.UserChatResponse{
 			ID:           messageReturn.SenderID.String(),
 			Email:        messageReturn.Email,
 			FirstName:    messageReturn.FirstName,
@@ -216,4 +218,125 @@ func (uc *useCase) UpdateMessage(ctx context.Context, chatID, messageID, userID 
 	}
 
 	return nil
+}
+
+func (uc *useCase) GetChats(ctx context.Context, userID uuid.UUID) (*responses.ChatListResponse, error) {
+	chats, err := uc.chatRepo.GetChats(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	chatList := []responses.ChatResponse{}
+
+	for _, c := range *chats {
+		chatList = append(chatList, responses.ChatResponse{
+			ID:   c.ID.String(),
+			Type: string(c.Type),
+			SessionID:  func() string { if c.SessionID == nil { return "" } else { return c.SessionID.String() } }(),
+			LastMessage: &responses.ChatMassageResponse{
+				ID:     c.LastMessage.ID.String(),
+				ChatID: c.LastMessage.ChatID.String(),
+				Autor: responses.UserChatResponse{
+					ID:           c.LastMessage.SenderID.String(),
+					Email:        c.LastMessage.Email,
+					FirstName:    c.LastMessage.FirstName,
+					LastName:     c.LastMessage.LastName,
+					Phone:        c.LastMessage.Phone,
+					PlayLevel:    string(c.LastMessage.PlayLevel),
+					Location:     *c.LastMessage.Location,
+					Bio:          *c.LastMessage.Bio,
+					AvatarURL:    *c.LastMessage.AvatarURL,
+					LastActiveAt: c.LastMessage.LastActiveAt,
+				},
+				Message:       c.LastMessage.Content,
+				Timestamp:     c.LastMessage.CreatedAt,
+				EditTimeStamp: c.LastMessage.UpdatedAt,
+			},
+			Users: convertToUserChatResponse(c.Users),
+		})
+	}
+
+	return &responses.ChatListResponse{
+		Chats: chatList,
+	}, nil
+}
+
+func (uc *useCase) GetUsersInChat(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) (*responses.UserListResponse, error) {
+	isPartOfChat, err := uc.chatRepo.IsUserPartOfChat(ctx, userID, chatID)
+	if err != nil {
+		return nil, err
+	}
+	if !isPartOfChat {
+		return nil, ErrUnauthorized
+	}
+
+	users, err := uc.chatRepo.GetUsersInChat(ctx, chatID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &responses.UserListResponse{
+		Users: convertToUserListResponse(*users),
+	}, nil
+}
+
+func (uc *useCase) GetDirectChat(ctx context.Context, userID uuid.UUID, otherUserUUID uuid.UUID, limit int, offset int) (*responses.ChatMassageListResponse, error) {
+	isOtherUserExist, err := uc.userRepo.IsUserExist(ctx, otherUserUUID)
+	if err != nil {
+		return nil, err
+	}
+	if !isOtherUserExist {
+		return nil, ErrValidation
+	}
+
+
+	chat_id, err := uc.chatRepo.GetDirectChatID(ctx, userID, otherUserUUID)
+	if err != nil || chat_id == uuid.Nil {
+		return nil, err
+	}
+
+	return uc.GetChatMessageByID(ctx, chat_id, limit, offset, userID)
+
+}
+
+func convertToUserListResponse(users []models.User) []responses.UserChatResponse {
+	userResponses := []responses.UserChatResponse{}
+
+	for _, u := range users {
+		userResponses = append(userResponses, responses.UserChatResponse{
+			ID:           u.ID.String(),
+			Email:        u.Email,
+			FirstName:    u.FirstName,
+			LastName:     u.LastName,
+			Phone:        u.Phone,
+			PlayLevel:    string(u.PlayLevel),
+			Location:     u.Location,
+			Bio:          u.Bio,
+			AvatarURL:    u.AvatarURL,
+			LastActiveAt: u.LastActiveAt,
+		})
+	}
+
+	return userResponses
+}
+
+func convertToUserChatResponse(users []models.User) []responses.UserChatResponse {
+	userResponses := []responses.UserChatResponse{}
+
+	for _, u := range users {
+		userResponses = append(userResponses, responses.UserChatResponse{
+			ID:           u.ID.String(),
+			Email:        u.Email,
+			FirstName:    u.FirstName,
+			LastName:     u.LastName,
+			Phone:        u.Phone,
+			PlayLevel:    string(u.PlayLevel),
+			Location:     u.Location,
+			Bio:          u.Bio,
+			AvatarURL:    u.AvatarURL,
+			LastActiveAt: u.LastActiveAt,
+		})
+	}
+
+	return userResponses
 }

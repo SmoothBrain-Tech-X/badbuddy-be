@@ -25,4 +25,5 @@ type VenueRepository interface {
 	GetFacilities(ctx context.Context, venueID uuid.UUID) ([]models.Facility, error)
 	AddFacilities(ctx context.Context, venueID uuid.UUID, facilityIDs []uuid.UUID) error
 	UpdateFacilities(ctx context.Context, venueID uuid.UUID, facilityIDs []uuid.UUID) error
+	CountSearch(ctx context.Context, query string, minPrice, maxPrice int, location string, facilities []string) (int, error)
 }

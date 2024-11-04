@@ -28,16 +28,9 @@ const (
 type Chat struct {
 	ID   uuid.UUID `db:"id"`
 	Type ChatType  `db:"type"`
-	// Name      string     `db:"name"`       // For group chats
-	SessionID *uuid.UUID `db:"session_id"` // For session chats
-	// CreatedAt time.Time  `db:"created_at"`
-	// UpdatedAt time.Time  `db:"updated_at"`
-	// DeletedAt *time.Time `db:"deleted_at"`
-
-	// Populated fields
-	// Participants []ChatParticipant `db:"participants,omitempty"`
-	// LastMessage  *Message          `db:"last_message,omitempty"`
-	// UnreadCount  int               `db:"unread_count,omitempty"`
+	SessionID *uuid.UUID `db:"session_id"`
+	LastMessage *Message `db:"last_message,omitempty"`
+	Users []User `db:"users,omitempty"`
 }
 
 // ChatParticipant represents a user in a chat

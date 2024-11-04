@@ -126,7 +126,7 @@ func (uc *useCase) Login(ctx context.Context, req requests.LoginRequest) (*respo
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
 		fmt.Println(err)
 		return nil, ErrInvalidCredentials
-	}
+	} 
 
 	if user.Status != models.UserStatusActive {
 		return nil, fmt.Errorf("account is not active")
@@ -281,10 +281,10 @@ func (uc *useCase) mapUserToResponse(user *models.User) responses.UserResponse {
 }
 
 func (uc *useCase) IsAdmin(ctx context.Context, userID uuid.UUID) (bool, error) {
-	// user, err := uc.userRepo.GetByID(ctx, userID)
-	// if err != nil {
-	// 	return false, ErrUserNotFound
-	// }
+	user, err := uc.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return false, ErrUserNotFound
+	}
 
-	return true, nil
+	return user.Role == string(models.UserRoleAdmin), nil
 }

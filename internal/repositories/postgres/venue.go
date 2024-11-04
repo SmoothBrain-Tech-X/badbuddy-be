@@ -421,6 +421,58 @@ func (r *venueRepository) Search(ctx context.Context, query string, limit, offse
 	return venues, nil
 }
 
+func (r *venueRepository) CountSearch(ctx context.Context, query string, minPrice, maxPrice int, location string, facilities []string) (int, error) {
+	countQuery := `
+		SELECT 
+			COUNT(DISTINCT v.id)
+		FROM 
+			venues v
+		LEFT JOIN 
+			venues_facilities vf ON v.id = vf.venue_id
+		LEFT JOIN 
+			facilities f ON vf.facility_id = f.id
+		LEFT JOIN
+			courts c ON v.id = c.venue_id
+		WHERE 
+			v.deleted_at IS NULL
+			AND (
+				v.search_vector @@ plainto_tsquery($1)
+				OR v.name ILIKE '%' || $1 || '%'
+			)
+			AND c.price_per_hour >= $3
+			AND c.price_per_hour <= $4
+			AND ($2 = '' OR v.location = $2)`
+
+	// Add facilities filter if provided
+	if len(facilities) > 0 {
+		placeholders := make([]string, len(facilities))
+		for i := range facilities {
+			placeholders[i] = fmt.Sprintf("$%d", i+5)
+		}
+		facilitiesCondition := fmt.Sprintf(
+			"AND v.id IN (SELECT venue_id FROM venues_facilities vf2 JOIN facilities f2 ON vf2.facility_id = f2.id WHERE f2.name IN (%s) GROUP BY venue_id HAVING COUNT(DISTINCT f2.name) = %d)",
+			strings.Join(placeholders, ", "), len(facilities),
+		)
+		countQuery += " " + facilitiesCondition
+	}
+
+	// Prepare parameters, including facilities
+	params := []interface{}{query, location, minPrice, maxPrice}
+	for _, facility := range facilities {
+		params = append(params, facility)
+	}
+
+	// Execute the count query
+	var count int
+	err := r.db.QueryRowContext(ctx, countQuery, params...).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count venues: %w", err)
+	}
+
+	return count, nil
+}
+
+
 func (r *venueRepository) AddCourt(ctx context.Context, court *models.Court) error {
 	query := `
 		INSERT INTO courts (

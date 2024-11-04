@@ -4,6 +4,7 @@ import (
 	"badbuddy/internal/domain/models"
 	"badbuddy/internal/repositories/interfaces"
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -236,4 +237,166 @@ func (r *chatRepository) IsUserIsSender(ctx context.Context, userID, messageID u
 	}
 
 	return count > 0, nil
+}
+
+func (r *chatRepository) GetChats(ctx context.Context, userID uuid.UUID) (*[]models.Chat, error) {
+	chats := []models.Chat{}
+
+	query := `
+		SELECT 
+			id,
+			type,
+			session_id
+		FROM
+			chats
+		WHERE
+			id IN (SELECT chat_id FROM chat_participants WHERE user_id = $1)`
+
+	err := r.db.SelectContext(ctx, &chats, query, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	lastMessages := []models.Message{}
+	for i, chat := range chats {
+		query = `
+			SELECT
+				m.id AS m_id,
+				m.chat_id,
+				m.sender_id,
+				m.type,
+				m.content,
+				m.created_at,
+				m.updated_at,
+				u.email,
+				u.first_name,
+				u.last_name,
+				u.phone,
+				u.play_level,
+				u.avatar_url,
+				u.play_level,
+				u.avatar_url,
+				u.gender,
+				u.location,
+				u.bio,
+				u.last_active_at
+			FROM
+				chat_messages m
+			JOIN
+				users u ON m.sender_id = u.id
+			WHERE
+				m.chat_id = $1
+			ORDER BY
+				m.created_at DESC
+			LIMIT 1`
+
+		err = r.db.SelectContext(ctx, &lastMessages, query, chat.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		chats[i].LastMessage = &lastMessages[0]
+
+	}
+
+	chatUsers := []models.User{}
+	for i, chat := range chats {
+		query = `
+			SELECT
+				u.id,
+				u.email,
+				u.first_name,
+				u.last_name,
+				u.phone,
+				u.play_level,
+				u.location,
+				u.bio,
+				u.avatar_url,
+				u.last_active_at,
+				u.gender,
+				u.play_hand,
+				u.avatar_url
+			FROM
+				chat_participants cp
+			JOIN
+				users u ON cp.user_id = u.id
+			WHERE
+				cp.chat_id = $1`
+
+		err = r.db.SelectContext(ctx, &chatUsers, query, chat.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		chats[i].Users = chatUsers
+	}
+
+	return &chats, nil
+}
+
+func (r *chatRepository) GetUsersInChat(ctx context.Context, chatID uuid.UUID) (*[]models.User, error) {
+	users := []models.User{}
+
+	query := `
+		SELECT
+			u.id,
+			u.email,
+			u.first_name,
+			u.last_name,
+			u.phone,
+			u.play_level,
+			u.location,
+			u.bio,
+			u.avatar_url,
+			u.last_active_at
+		FROM
+			chat_participants cp
+		JOIN
+			users u ON cp.user_id = u.id
+		WHERE
+			cp.chat_id = $1`
+
+	err := r.db.SelectContext(ctx, &users, query, chatID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &users, nil
+}
+
+func (r *chatRepository) GetDirectChatID(ctx context.Context, userID, otherUserUUID uuid.UUID) (uuid.UUID, error) {
+	var chatID uuid.UUID
+
+	query := `
+		SELECT 
+			chat_id
+		FROM 
+			chat_participants
+		WHERE 
+			user_id = $1
+			AND chat_id IN (SELECT chat_id FROM chat_participants WHERE user_id = $2)`
+
+	err := r.db.GetContext(ctx, &chatID, query, userID, otherUserUUID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			if chatID == uuid.Nil {
+				chatID = uuid.New()
+				query = `INSERT INTO chats (id, type) VALUES ($1, 'direct')`
+				_, err = r.db.ExecContext(ctx, query, chatID)
+				if err != nil {
+					return uuid.Nil, err
+				}
+
+				query = `INSERT INTO chat_participants (id, chat_id, user_id) VALUES ($1, $2, $3), ($4, $2, $5)`
+				_, err = r.db.ExecContext(ctx, query, uuid.New(), chatID, userID, uuid.New(), otherUserUUID)
+				if err != nil {
+					return uuid.Nil, err
+				}
+			}
+		} else {
+			return uuid.Nil, err
+		}
+	}
+
+	return chatID, nil
 }

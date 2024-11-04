@@ -89,10 +89,21 @@ func (r *userRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Use
 
 func (r *userRepository) GetUsersByIDs(ctx context.Context, ids []uuid.UUID) ([]models.User, error) {
 	var users []models.User
+
+	// Convert []uuid.UUID to []string for PostgreSQL array parameter
+	stringIDs := make([]string, len(ids))
+	for i, id := range ids {
+		stringIDs[i] = id.String()
+	}
+
 	err := r.db.SelectContext(ctx, &users, `
-		SELECT * FROM users
-		WHERE id = ANY($1) AND status != $2`,
-		ids, models.UserStatusInactive)
+		SELECT 
+			id, email, first_name, last_name, phone,
+			play_level, location, bio, avatar_url, status,
+			created_at, last_active_at
+		FROM users
+		WHERE id = ANY($1::uuid[]) AND status != $2`,
+		pq.Array(stringIDs), models.UserStatusInactive)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get users by ids: %w", err)
@@ -327,4 +338,17 @@ func (r *userRepository) GetVenueUserOwn(ctx context.Context, userID uuid.UUID) 
 	}
 
 	return venues, nil
+}
+
+func (r *userRepository) IsUserExist(ctx context.Context, userID uuid.UUID) (bool, error) {
+	var count int
+	err := r.db.GetContext(ctx, &count, `
+		SELECT COUNT(*) FROM users WHERE id = $1`,
+		userID)
+
+	if err != nil {
+		return false, fmt.Errorf("failed to check user id: %w", err)
+	}
+
+	return count > 0, nil
 }
