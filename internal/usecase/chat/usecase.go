@@ -57,7 +57,7 @@ func (uc *useCase) GetChatMessageByID(ctx context.Context, chatID uuid.UUID, lim
 		chatMassage = append(chatMassage, responses.ChatMassageResponse{
 			ID:     m.ID.String(),
 			ChatID: m.ChatID.String(),
-			Autor: responses.UserResponse{
+			Autor: responses.UserChatResponse{
 				ID:           m.SenderID.String(),
 				Email:        m.Email,
 				FirstName:    m.FirstName,
@@ -117,7 +117,7 @@ func (uc *useCase) SendMessage(ctx context.Context, userID, chatID uuid.UUID, re
 	chatMessage := responses.ChatMassageResponse{
 		ID:     messageReturn.ID.String(),
 		ChatID: messageReturn.ChatID.String(),
-		Autor: responses.UserResponse{
+		Autor: responses.UserChatResponse{
 			ID:           messageReturn.SenderID.String(),
 			Email:        messageReturn.Email,
 			FirstName:    messageReturn.FirstName,
@@ -234,7 +234,7 @@ func (uc *useCase) GetChats(ctx context.Context, userID uuid.UUID) (*responses.C
 			LastMessage: &responses.ChatMassageResponse{
 				ID:     c.LastMessage.ID.String(),
 				ChatID: c.LastMessage.ChatID.String(),
-				Autor: responses.UserResponse{
+				Autor: responses.UserChatResponse{
 					ID:           c.LastMessage.SenderID.String(),
 					Email:        c.LastMessage.Email,
 					FirstName:    c.LastMessage.FirstName,
@@ -245,7 +245,6 @@ func (uc *useCase) GetChats(ctx context.Context, userID uuid.UUID) (*responses.C
 					Bio:          *c.LastMessage.Bio,
 					AvatarURL:    *c.LastMessage.AvatarURL,
 					LastActiveAt: c.LastMessage.LastActiveAt,
-					Gender:  *c.LastMessage.Gender,
 				},
 				Message:       c.LastMessage.Content,
 				Timestamp:     c.LastMessage.CreatedAt,
