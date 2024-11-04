@@ -291,7 +291,7 @@ func (uc *useCase) GetDirectChat(ctx context.Context, userID uuid.UUID, otherUse
 
 
 	chat_id, err := uc.chatRepo.GetDirectChatID(ctx, userID, otherUserUUID)
-	if err != nil {
+	if err != nil || chat_id == uuid.Nil {
 		return nil, err
 	}
 
