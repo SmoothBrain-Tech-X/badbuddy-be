@@ -22,4 +22,6 @@ type UseCase interface {
 	GetUsersInChat(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) (*responses.UserListResponse, error)
 
 	GetDirectChat(ctx context.Context, userID uuid.UUID, otherUserUUID uuid.UUID, limit int, offset int) (*responses.ChatMassageListResponse, error)
+
+	GetChatMessageOfSession(ctx context.Context, sessionID uuid.UUID, limit int, offset int, userID uuid.UUID) (*responses.ChatMassageListResponse, error)
 }

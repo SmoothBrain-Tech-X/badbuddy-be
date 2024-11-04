@@ -66,15 +66,16 @@ func main() {
 	venueHandler := rest.NewVenueHandler(venueUseCase, facilityUseCase, userUseCase)
 	venueHandler.SetupVenueRoutes(app)
 
-	sessionRepo := postgres.NewSessionRepository(db)
-	sessionUseCase := session.NewSessionUseCase(sessionRepo, venueRepo)
-	sessionHandler := rest.NewSessionHandler(sessionUseCase)
-	sessionHandler.SetupSessionRoutes(app)
-
 	chatRepo := postgres.NewChatRepository(db)
 	chatUseCase := chat.NewChatUseCase(chatRepo, userRepo)
 	chatHandler := rest.NewChatHandler(chatUseCase, chatHub)
 	chatHandler.SetupChatRoutes(app)
+	
+	sessionRepo := postgres.NewSessionRepository(db)
+	sessionUseCase := session.NewSessionUseCase(sessionRepo, venueRepo, chatRepo)
+	sessionHandler := rest.NewSessionHandler(sessionUseCase)
+	sessionHandler.SetupSessionRoutes(app)
+
 
 	bookingRepo := postgres.NewBookingRepository(db)
 	courtRepo := postgres.NewCourtRepository(db)

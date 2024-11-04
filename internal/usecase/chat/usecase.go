@@ -299,6 +299,23 @@ func (uc *useCase) GetDirectChat(ctx context.Context, userID uuid.UUID, otherUse
 
 }
 
+func (uc *useCase) GetChatMessageOfSession(ctx context.Context, sessionID uuid.UUID, limit int, offset int, userID uuid.UUID) (*responses.ChatMassageListResponse, error) {
+	isPartOfSession, err := uc.chatRepo.IsUserPartOfSession(ctx, userID, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	if !isPartOfSession {
+		return nil, ErrUnauthorized
+	}
+
+	chat_id, err := uc.chatRepo.GetChatIDBySessionID(ctx, sessionID)
+	if err != nil || chat_id == uuid.Nil {
+		return nil, err
+	}
+
+	return uc.GetChatMessageByID(ctx, chat_id, limit, offset, userID)
+}
+
 func convertToUserListResponse(users []models.User) []responses.UserChatResponse {
 	userResponses := []responses.UserChatResponse{}
 

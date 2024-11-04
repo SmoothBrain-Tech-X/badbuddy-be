@@ -43,6 +43,7 @@ func (h *ChatHandler) SetupChatRoutes(app *fiber.App) {
 	chat.Get("/:chatID/users", h.GetUsersInChat)
 
 	chat.Get("direct/:userID/messages", h.GetDirectChat)
+	chat.Get("session/:sessionID/messages", h.GetChatMessageOfSession)
 }
 
 func (h *ChatHandler) GetChatMessage(c *fiber.Ctx) error {
@@ -293,6 +294,39 @@ func (h *ChatHandler) GetDirectChat(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(responses.SuccessResponse{
 		Message: "Direct chat retrieved successfully",
+		Data:    chat,
+	})
+}
+
+func (h *ChatHandler) GetChatMessageOfSession(c *fiber.Ctx) error {
+	sessionID := c.Params("sessionID")
+	limitStr := c.Query("limit", "50")
+	offsetStr := c.Query("offset", "0")
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		return h.handleError(c, errors.New("invalid limit format"))
+	}
+
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil {
+		return h.handleError(c, errors.New("invalid offset format"))
+	}
+
+	userID := c.Locals("userID").(uuid.UUID)
+
+	sessionUUID, err := uuid.Parse(sessionID)
+	if err != nil {
+		return h.handleError(c, errors.New("invalid session ID format"))
+	}
+
+	chat, err := h.chatUseCase.GetChatMessageOfSession(c.Context(), sessionUUID, limit, offset, userID)
+	if err != nil {
+		return h.handleError(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(responses.SuccessResponse{
+		Message: "Chat messages retrieved successfully",
 		Data:    chat,
 	})
 }
