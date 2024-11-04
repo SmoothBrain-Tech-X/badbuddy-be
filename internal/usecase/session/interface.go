@@ -21,4 +21,6 @@ type UseCase interface {
 	GetUserSessions(ctx context.Context, userID uuid.UUID, includeHistory bool) ([]responses.SessionResponse, error)
 	ChangeParticipantStatus(ctx context.Context, sessionID, hostID uuid.UUID, req requests.ChangeParticipantStatusRequest) error
 	GetSessionParticipants(ctx context.Context, sessionID uuid.UUID) ([]responses.ParticipantResponse, error)
+	GetMyJoinedSessions(ctx context.Context, userID uuid.UUID, includeHistory bool) ([]responses.SessionResponse, error)
+	GetMyHostedSessions(ctx context.Context, userID uuid.UUID, includeHistory bool) ([]responses.SessionResponse, error)
 }

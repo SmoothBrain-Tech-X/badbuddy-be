@@ -18,4 +18,6 @@ type SessionRepository interface {
 	UpdateParticipantStatus(ctx context.Context, sessionID, userID uuid.UUID, status models.ParticipantStatus) error
 	GetParticipants(ctx context.Context, sessionID uuid.UUID) ([]models.SessionParticipant, error)
 	GetUserSessions(ctx context.Context, userID uuid.UUID, includeHistory bool) ([]models.SessionDetail, error)
+	GetMyJoinedSessions(ctx context.Context, userID uuid.UUID, includeHistory bool) ([]models.SessionDetail, error)
+	GetMyHostedSessions(ctx context.Context, userID uuid.UUID, includeHistory bool) ([]models.SessionDetail, error)
 }

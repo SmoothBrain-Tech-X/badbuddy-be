@@ -32,6 +32,8 @@ func (h *SessionHandler) SetupSessionRoutes(app *fiber.App) {
 
 	// Protected routes
 	sessions.Use(middleware.AuthRequired())
+	sessions.Get("/join/me", h.GetMyJoinedSessions)
+	sessions.Get("/host/me", h.GetMyHostedSessions)
 	sessions.Post("/", h.CreateSession)
 	sessions.Put("/:id", h.UpdateSession)
 	sessions.Post("/:id/join", h.JoinSession)
@@ -320,6 +322,34 @@ func (h *SessionHandler) GetSessionParticipants(c *fiber.Ctx) error {
 
 	return c.JSON(responses.SuccessResponse{
 		Data: participants,
+	})
+}
+
+func (h *SessionHandler) GetMyJoinedSessions(c *fiber.Ctx) error {
+	userID := c.Locals("userID").(uuid.UUID)
+	includeHistory := c.QueryBool("include_history", false)
+
+	sessions, err := h.sessionUseCase.GetMyJoinedSessions(c.Context(), userID, includeHistory)
+	if err != nil {
+		return h.handleError(c, err)
+	}
+
+	return c.JSON(responses.SuccessResponse{
+		Data: sessions,
+	})
+}
+
+func (h *SessionHandler) GetMyHostedSessions(c *fiber.Ctx) error {
+	userID := c.Locals("userID").(uuid.UUID)
+	includeHistory := c.QueryBool("include_history", false)
+
+	sessions, err := h.sessionUseCase.GetMyHostedSessions(c.Context(), userID, includeHistory)
+	if err != nil {
+		return h.handleError(c, err)
+	}
+
+	return c.JSON(responses.SuccessResponse{
+		Data: sessions,
 	})
 }
 

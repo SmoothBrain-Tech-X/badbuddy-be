@@ -472,6 +472,34 @@ func (uc *useCase) GetUserSessions(ctx context.Context, userID uuid.UUID, includ
 	return sessionResponses, nil
 }
 
+func (uc *useCase) GetMyJoinedSessions(ctx context.Context, userID uuid.UUID, includeHistory bool) ([]responses.SessionResponse, error) {
+	sessions, err := uc.sessionRepo.GetMyJoinedSessions(ctx, userID, includeHistory)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get joined sessions: %w", err)
+	}
+
+	sessionResponses := make([]responses.SessionResponse, len(sessions))
+	for i, session := range sessions {
+		sessionResponses[i] = *uc.toSessionResponse(&session)
+	}
+
+	return sessionResponses, nil
+}
+
+func (uc *useCase) GetMyHostedSessions(ctx context.Context, userID uuid.UUID, includeHistory bool) ([]responses.SessionResponse, error) {
+	sessions, err := uc.sessionRepo.GetMyHostedSessions(ctx, userID, includeHistory)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get hosted sessions: %w", err)
+	}
+
+	sessionResponses := make([]responses.SessionResponse, len(sessions))
+	for i, session := range sessions {
+		sessionResponses[i] = *uc.toSessionResponse(&session)
+	}
+
+	return sessionResponses, nil
+}
+
 func (uc *useCase) ChangeParticipantStatus(ctx context.Context, sessionID, hostID uuid.UUID, req requests.ChangeParticipantStatusRequest) error {
 	session, err := uc.sessionRepo.GetByID(ctx, sessionID)
 	if err != nil {

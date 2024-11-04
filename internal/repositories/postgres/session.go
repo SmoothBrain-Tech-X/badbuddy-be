@@ -344,3 +344,67 @@ func (r *sessionRepository) GetUserSessions(ctx context.Context, userID uuid.UUI
 	err := r.db.SelectContext(ctx, &sessions, query, userID)
 	return sessions, err
 }
+func (r *sessionRepository) GetMyJoinedSessions(ctx context.Context, userID uuid.UUID, includeHistory bool) ([]models.SessionDetail, error) {
+	conditions := []string{
+		"(sp.user_id = $1)",
+	}
+
+	if !includeHistory {
+		conditions = append(conditions, "ps.session_date >= CURRENT_DATE")
+	}
+
+	query := fmt.Sprintf(`
+		SELECT DISTINCT
+			ps.*,
+			v.name as venue_name,
+			v.location as venue_location,
+			u.first_name || ' ' || u.last_name as host_name,
+			u.play_level as host_level,
+			COUNT(sp2.id) FILTER (WHERE sp2.status = 'confirmed') as confirmed_players
+		FROM play_sessions ps
+		JOIN venues v ON v.id = ps.venue_id
+		JOIN users u ON u.id = ps.host_id
+		LEFT JOIN session_participants sp ON sp.session_id = ps.id
+		LEFT JOIN session_participants sp2 ON sp2.session_id = ps.id
+		WHERE %s
+		GROUP BY ps.id, v.name, v.location, u.first_name, u.last_name, u.play_level
+		ORDER BY ps.session_date DESC, ps.start_time DESC`,
+		strings.Join(conditions, " AND "),
+	)
+
+	var sessions []models.SessionDetail
+	err := r.db.SelectContext(ctx, &sessions, query, userID)
+	return sessions, err
+}
+
+func (r *sessionRepository) GetMyHostedSessions(ctx context.Context, userID uuid.UUID, includeHistory bool) ([]models.SessionDetail, error) {
+	conditions := []string{
+		"(ps.host_id = $1)",
+	}
+
+	if !includeHistory {
+		conditions = append(conditions, "ps.session_date >= CURRENT_DATE")
+	}
+
+	query := fmt.Sprintf(`
+		SELECT DISTINCT
+			ps.*,
+			v.name as venue_name,
+			v.location as venue_location,
+			u.first_name || ' ' || u.last_name as host_name,
+			u.play_level as host_level,
+			COUNT(sp.id) FILTER (WHERE sp.status = 'confirmed') as confirmed_players
+		FROM play_sessions ps
+		JOIN venues v ON v.id = ps.venue_id
+		JOIN users u ON u.id = ps.host_id
+		LEFT JOIN session_participants sp ON sp.session_id = ps.id
+		WHERE %s
+		GROUP BY ps.id, v.name, v.location, u.first_name, u.last_name, u.play_level
+		ORDER BY ps.session_date DESC, ps.start_time DESC`,
+		strings.Join(conditions, " AND "),
+	)
+
+	var sessions []models.SessionDetail
+	err := r.db.SelectContext(ctx, &sessions, query, userID)
+	return sessions, err
+}
