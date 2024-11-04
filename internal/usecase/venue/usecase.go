@@ -190,50 +190,25 @@ func (uc *useCase) UpdateVenue(ctx context.Context, id uuid.UUID, req requests.U
 	return nil
 }
 
-func (uc *useCase) ListVenues(ctx context.Context, location string, limit, offset int) ([]responses.VenueResponse, error) {
+func (uc *useCase) ListVenues(ctx context.Context, location string, limit, offset int) ([]responses.ListVenueResponse, error) {
 	venues, err := uc.venueRepo.List(ctx, location, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list venues: %w", err)
 	}
 
-	venueResponses := make([]responses.VenueResponse, len(venues))
+	venueResponses := make([]responses.ListVenueResponse, 0)
 
-	for i, venue := range venues {
-
-		openRange := []responses.OpenRangeResponse{}
-		if unMarshalJSON(json.RawMessage(venue.OpenRange.RawMessage), &openRange) != nil {
-			return nil, fmt.Errorf("error decoding enroll response: %v", err)
-		}
-
-		rules := []responses.RuleResponse{}
-		if unMarshalJSON(json.RawMessage(venue.Rules.RawMessage), &rules) != nil {
-			return nil, fmt.Errorf("error decoding enroll response: %v", err)
-		}
-
-		venueResponses[i] = responses.VenueResponse{
-			ID:           venue.ID.String(),
-			Name:         venue.Name,
-			Description:  venue.Description,
-			Address:      venue.Address,
-			Location:     venue.Location,
-			Phone:        venue.Phone,
-			Email:        venue.Email,
-			OpenRange:    openRange,
-			ImageURLs:    venue.ImageURLs,
-			Status:       string(venue.Status),
-			Rating:       venue.Rating,
-			TotalReviews: venue.TotalReviews,
-			Facilities:   convertToFacilityResponse(venue.Facilities),
-			Rules:        rules,
-			Courts: convertToCourtResponse(venue.Courts),
-		}
+	for _, venue := range venues {
+		venueResponses = append(venueResponses, responses.ListVenueResponse{
+			ID:   venue.ID.String(),
+			Name: venue.Name,
+		})
 	}
-
 	return venueResponses, nil
 }
 
-func (uc *useCase) SearchVenues(ctx context.Context, query string, limit, offset int) (responses.VenueResponseDTO, error) {
-	venues, err := uc.venueRepo.Search(ctx, query, limit, offset)
+func (uc *useCase) SearchVenues(ctx context.Context, query string, limit, offset int, minPrice int, maxPrice int, location string, facilities []string) (responses.VenueResponseDTO, error) {
+	venues, err := uc.venueRepo.Search(ctx, query, limit, offset, minPrice, maxPrice, location, facilities)
 	if err != nil {
 		return responses.VenueResponseDTO{}, fmt.Errorf("failed to search venues: %w", err)
 	}
@@ -537,6 +512,7 @@ func convertToModelFacilities(facilities []requests.Facility) []models.Facility 
 	for i, facility := range facilities {
 		modelFacilities[i] = models.Facility{
 			ID: uuid.MustParse(facility.ID),
+			Name: "",
 		}
 	}
 	return modelFacilities
@@ -547,6 +523,7 @@ func convertToFacilityResponse(facilities []models.Facility) []responses.Facilit
 	for i, facility := range facilities {
 		facilityResponses[i] = responses.FacilityResponse{
 			ID: facility.ID.String(),
+			Name: facility.Name,
 		}
 	}
 	return facilityResponses

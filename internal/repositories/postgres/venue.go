@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"badbuddy/internal/domain/models"
 	"badbuddy/internal/repositories/interfaces"
@@ -309,12 +310,13 @@ func (r *venueRepository) CountVenues(ctx context.Context) (int, error) {
 
 	return count, nil
 }
-func (r *venueRepository) Search(ctx context.Context, query string, limit, offset int) ([]models.Venue, error) {
+
+func (r *venueRepository) Search(ctx context.Context, query string, limit, offset int, minPrice, maxPrice int, location string, facilities []string) ([]models.Venue, error) {
 	searchQuery := `
 		SELECT 
 			v.id, v.name, v.description, v.address, v.location, v.phone, v.email,
 			v.open_range, v.image_urls, v.status, v.rating, v.total_reviews, v.owner_id,
-			v.created_at, v.updated_at, v.search_vector, v.rules,
+			v.created_at, v.updated_at, v.rules,
 			COALESCE(json_agg(
 				json_build_object('id', f.id, 'name', f.name)
 			) FILTER (WHERE f.id IS NOT NULL), '[]') AS facilities,
@@ -334,15 +336,40 @@ func (r *venueRepository) Search(ctx context.Context, query string, limit, offse
 			AND (
 				v.search_vector @@ plainto_tsquery($1)
 				OR v.name ILIKE '%' || $1 || '%'
-				OR v.location ILIKE '%' || $1 || '%'
 			)
+			AND c.price_per_hour >= $3
+			AND c.price_per_hour <= $4
+			AND ($2 = '' OR v.location = $2)`
+
+	// Add facilities filter if provided
+	if len(facilities) > 0 {
+		placeholders := make([]string, len(facilities))
+		for i := range facilities {
+			placeholders[i] = fmt.Sprintf("$%d", i+7)
+		}
+		facilitiesCondition := fmt.Sprintf(
+			"AND v.id IN (SELECT venue_id FROM venues_facilities vf2 JOIN facilities f2 ON vf2.facility_id = f2.id WHERE f2.name IN (%s) GROUP BY venue_id HAVING COUNT(DISTINCT f2.name) = %d)",
+			strings.Join(placeholders, ", "), len(facilities),
+		)
+		searchQuery += " " + facilitiesCondition
+	}
+
+	// Close the query with GROUP BY and ORDER BY clauses
+	searchQuery += `
 		GROUP BY 
 			v.id
 		ORDER BY 
 			v.rating DESC, v.total_reviews DESC, v.created_at DESC
-		LIMIT $2 OFFSET $3`
+		LIMIT $5 OFFSET $6`
 
-	rows, err := r.db.QueryContext(ctx, searchQuery, query, limit, offset)
+	// Prepare parameters, including facilities
+	params := []interface{}{query, location, minPrice, maxPrice, limit, offset}
+	for _, facility := range facilities {
+		params = append(params, facility)
+	}
+
+	// Execute the query
+	rows, err := r.db.QueryContext(ctx, searchQuery, params...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search venues: %w", err)
 	}
@@ -359,7 +386,7 @@ func (r *venueRepository) Search(ctx context.Context, query string, limit, offse
 			&venue.ID, &venue.Name, &venue.Description, &venue.Address, &venue.Location,
 			&venue.Phone, &venue.Email, &venue.OpenRange, &venue.ImageURLs,
 			&venue.Status, &venue.Rating, &venue.TotalReviews, &venue.OwnerID,
-			&venue.CreatedAt, &venue.UpdatedAt, &venue.Search_vector, &venue.Rules,
+			&venue.CreatedAt, &venue.UpdatedAt, &venue.Rules,
 			&facilitiesJSON, &courtsJSON,
 		)
 		if err != nil {
