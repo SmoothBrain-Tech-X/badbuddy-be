@@ -343,8 +343,8 @@ func (r *venueRepository) Search(ctx context.Context, query string, limit, offse
 				v.search_vector @@ plainto_tsquery($1)
 				OR v.name ILIKE '%' || $1 || '%'
 			)
-			AND c.price_per_hour >= $3
-			AND c.price_per_hour <= $4
+			AND ($3 = -99 OR c.price_per_hour >= $3)
+			AND ($4 = -99 OR c.price_per_hour <= $4)
 			AND ($2 = '' OR v.location = $2)`
 
 	// Add facilities filter if provided
@@ -439,8 +439,8 @@ func (r *venueRepository) CountSearch(ctx context.Context, query string, minPric
 				v.search_vector @@ plainto_tsquery($1)
 				OR v.name ILIKE '%' || $1 || '%'
 			)
-			AND c.price_per_hour >= $3
-			AND c.price_per_hour <= $4
+			AND ($3 = -99 OR c.price_per_hour >= $3)
+			AND ($4 = -99 OR c.price_per_hour <= $4)
 			AND ($2 = '' OR v.location = $2)`
 
 	// Add facilities filter if provided
@@ -471,7 +471,6 @@ func (r *venueRepository) CountSearch(ctx context.Context, query string, minPric
 
 	return count, nil
 }
-
 
 func (r *venueRepository) AddCourt(ctx context.Context, court *models.Court) error {
 	query := `

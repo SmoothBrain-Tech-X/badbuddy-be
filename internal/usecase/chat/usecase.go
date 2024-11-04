@@ -32,13 +32,13 @@ func NewChatUseCase(chatRepo interfaces.ChatRepository, userRepo interfaces.User
 }
 
 func (uc *useCase) GetChatMessageByID(ctx context.Context, chatID uuid.UUID, limit int, offset int, userID uuid.UUID) (*responses.ChatMassageListResponse, error) {
-	isPartOfChat, err := uc.chatRepo.IsUserPartOfChat(ctx, userID, chatID)
-	if err != nil {
-		return nil, err
-	}
-	if !isPartOfChat {
-		return nil, ErrUnauthorized
-	}
+	// isPartOfChat, err := uc.chatRepo.IsUserPartOfChat(ctx, userID, chatID)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// if !isPartOfChat {
+	// 	return nil, ErrUnauthorized
+	// }
 
 	chat, err := uc.chatRepo.GetChatMessageByID(ctx, chatID, limit, offset)
 
@@ -88,15 +88,15 @@ func (uc *useCase) SendMessage(ctx context.Context, userID, chatID uuid.UUID, re
 		return nil, ErrValidation
 	}
 
-	isPartOfChat, err := uc.chatRepo.IsUserPartOfChat(ctx, userID, chatID)
-	if err != nil {
-		return nil, err
-	}
-	if !isPartOfChat {
-		return nil, ErrUnauthorized
-	}
+	// isPartOfChat, err := uc.chatRepo.IsUserPartOfChat(ctx, userID, chatID)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// if !isPartOfChat {
+	// 	return nil, ErrUnauthorized
+	// }
 
-	_, err = uc.chatRepo.GetChatByID(ctx, chatID)
+	_, err := uc.chatRepo.GetChatByID(ctx, chatID)
 	if err != nil {
 		return nil, ErrChatNotFound
 	}
@@ -305,13 +305,13 @@ func (uc *useCase) GetDirectChat(ctx context.Context, userID uuid.UUID, otherUse
 }
 
 func (uc *useCase) GetChatMessageOfSession(ctx context.Context, sessionID uuid.UUID, limit int, offset int, userID uuid.UUID) (*responses.ChatMassageListResponse, error) {
-	isPartOfSession, err := uc.chatRepo.IsUserPartOfSession(ctx, userID, sessionID)
-	if err != nil {
-		return nil, err
-	}
-	if !isPartOfSession {
-		return nil, ErrUnauthorized
-	}
+	// isPartOfSession, err := uc.chatRepo.IsUserPartOfSession(ctx, userID, sessionID)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// if !isPartOfSession {
+	// 	return nil, ErrUnauthorized
+	// }
 
 	chat_id, err := uc.chatRepo.GetChatIDBySessionID(ctx, sessionID)
 	if err != nil || chat_id == uuid.Nil {
