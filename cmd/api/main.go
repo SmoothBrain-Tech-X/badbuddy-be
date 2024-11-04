@@ -55,7 +55,7 @@ func main() {
 	userUseCase := user.NewUserUseCase(userRepo, "your-jwt-secret", 24*time.Hour)
 	userHandler := rest.NewUserHandler(userUseCase)
 	userHandler.SetupUserRoutes(app)
-	
+
 	facilityRepo := postgres.NewFacilityRepository(db)
 	facilityUseCase := facility.NewFacilityUseCase(facilityRepo)
 	facilityHandler := rest.NewFacilityHandler(facilityUseCase, userUseCase)
@@ -63,7 +63,7 @@ func main() {
 
 	venueRepo := postgres.NewVenueRepository(db)
 	venueUseCase := venue.NewVenueUseCase(venueRepo, userRepo)
-	venueHandler := rest.NewVenueHandler(venueUseCase, facilityUseCase)
+	venueHandler := rest.NewVenueHandler(venueUseCase, facilityUseCase, userUseCase)
 	venueHandler.SetupVenueRoutes(app)
 
 	sessionRepo := postgres.NewSessionRepository(db)
@@ -75,7 +75,6 @@ func main() {
 	chatUseCase := chat.NewChatUseCase(chatRepo, userRepo)
 	chatHandler := rest.NewChatHandler(chatUseCase, chatHub)
 	chatHandler.SetupChatRoutes(app)
-
 
 	bookingRepo := postgres.NewBookingRepository(db)
 	courtRepo := postgres.NewCourtRepository(db)
