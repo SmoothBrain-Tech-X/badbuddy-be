@@ -23,4 +23,6 @@ type ChatRepository interface {
 	GetChats(ctx context.Context, userID uuid.UUID) (*[]models.Chat, error)
 	GetUsersInChat(ctx context.Context, chatID uuid.UUID) (*[]models.User, error)
 	GetDirectChatID(ctx context.Context, userID, otherUserID uuid.UUID) (uuid.UUID, error)
+	IsUserPartOfSession(ctx context.Context, userID, sessionID uuid.UUID) (bool, error)
+	GetChatIDBySessionID(ctx context.Context, sessionID uuid.UUID) (uuid.UUID, error)
 }

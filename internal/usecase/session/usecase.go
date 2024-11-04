@@ -27,12 +27,14 @@ var (
 type useCase struct {
 	sessionRepo interfaces.SessionRepository
 	venueRepo   interfaces.VenueRepository
+	chatRepo    interfaces.ChatRepository
 }
 
-func NewSessionUseCase(sessionRepo interfaces.SessionRepository, venueRepo interfaces.VenueRepository) UseCase {
+func NewSessionUseCase(sessionRepo interfaces.SessionRepository, venueRepo interfaces.VenueRepository, chatRepo interfaces.ChatRepository) UseCase {
 	return &useCase{
 		sessionRepo: sessionRepo,
 		venueRepo:   venueRepo,
+		chatRepo:    chatRepo,
 	}
 }
 
@@ -129,6 +131,20 @@ func (uc *useCase) CreateSession(ctx context.Context, hostID uuid.UUID, req requ
 
 	if err := uc.sessionRepo.AddParticipant(ctx, participant); err != nil {
 		return nil, fmt.Errorf("failed to add host as participant: %w", err)
+	}
+
+	chat := models.Chat{
+		ID:        uuid.New(),
+		Type:      models.ChatTypeSession,
+		SessionID: &session.ID,
+	}
+
+	if err := uc.chatRepo.CreateChat(ctx, &chat); err != nil {
+		return nil, fmt.Errorf("failed to create chat: %w", err)
+	}
+
+	if err := uc.chatRepo.AddUserToChat(ctx, hostID, chat.ID); err != nil {
+		return nil, fmt.Errorf("failed to add host to chat: %w", err)
 	}
 
 	// Get complete session details
@@ -270,6 +286,15 @@ func (uc *useCase) JoinSession(ctx context.Context, sessionID, userID uuid.UUID,
 		return fmt.Errorf("failed to add participant: %w", err)
 	}
 
+	chatID, err := uc.chatRepo.GetChatIDBySessionID(ctx, sessionID)
+	if err != nil {
+		return fmt.Errorf("failed to get chat ID: %w", err)
+	}
+
+	if err := uc.chatRepo.AddUserToChat(ctx, userID, chatID); err != nil {
+		return fmt.Errorf("failed to add user to chat: %w", err)
+	}
+
 	// Update session status if max participants reached
 	if status == models.ParticipantStatusConfirmed && confirmedCount+1 >= session.MaxParticipants {
 		session.Status = models.SessionStatusFull
@@ -340,6 +365,15 @@ func (uc *useCase) LeaveSession(ctx context.Context, sessionID, userID uuid.UUID
 	// 	}
 	// }
 
+	chatID, err := uc.chatRepo.GetChatIDBySessionID(ctx, sessionID)
+	if err != nil {
+		return fmt.Errorf("failed to get chat ID: %w", err)
+	}
+
+	if err := uc.chatRepo.RemoveUserFromChat(ctx, userID, chatID); err != nil {
+		return fmt.Errorf("failed to remove user from chat: %w", err)
+	}
+
 	if currentStatus == models.ParticipantStatusConfirmed && session.Status == models.SessionStatusFull {
 		session.Status = models.SessionStatusOpen
 		if err := uc.sessionRepo.Update(ctx, &session.Session); err != nil {
@@ -378,10 +412,19 @@ func (uc *useCase) CancelSession(ctx context.Context, sessionID, hostID uuid.UUI
 		return fmt.Errorf("failed to get participants: %w", err)
 	}
 
+	chatID, err := uc.chatRepo.GetChatIDBySessionID(ctx, sessionID)
+	if err != nil {
+		return fmt.Errorf("failed to get chat ID: %w", err)
+	}
+
 	for _, p := range participants {
 		if p.Status != models.ParticipantStatusCancelled {
 			if err := uc.sessionRepo.UpdateParticipantStatus(ctx, sessionID, p.UserID, models.ParticipantStatusCancelled); err != nil {
 				return fmt.Errorf("failed to update participant status: %w", err)
+			}
+
+			if err := uc.chatRepo.RemoveUserFromChat(ctx, p.UserID, chatID); err != nil {
+				return fmt.Errorf("failed to remove user from chat: %w", err)
 			}
 		}
 	}

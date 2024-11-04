@@ -4,6 +4,7 @@ import (
 	"badbuddy/internal/delivery/dto/requests"
 	"badbuddy/internal/delivery/http/middleware"
 	"badbuddy/internal/usecase/facility"
+	"badbuddy/internal/usecase/user"
 	"badbuddy/internal/usecase/venue"
 	"strings"
 
@@ -14,12 +15,14 @@ import (
 type VenueHandler struct {
 	venueUseCase    venue.UseCase
 	facilityUseCase facility.UseCase
+	userUseCase     user.UseCase
 }
 
-func NewVenueHandler(venueUseCase venue.UseCase, facilityUseCase facility.UseCase) *VenueHandler {
+func NewVenueHandler(venueUseCase venue.UseCase, facilityUseCase facility.UseCase, userUseCase user.UseCase) *VenueHandler {
 	return &VenueHandler{
 		venueUseCase:    venueUseCase,
 		facilityUseCase: facilityUseCase,
+		userUseCase:     userUseCase,
 	}
 }
 
@@ -100,8 +103,15 @@ func (h *VenueHandler) UpdateVenue(c *fiber.Ctx) error {
 		})
 	}
 
-	// check ownerID is owner or not
 	ownerID := c.Locals("userID").(uuid.UUID)
+
+	isAdmin, err := h.userUseCase.IsAdmin(c.Context(), ownerID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
 	isOwner, err := h.venueUseCase.IsOwner(c.Context(), id, ownerID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -109,10 +119,13 @@ func (h *VenueHandler) UpdateVenue(c *fiber.Ctx) error {
 		})
 	}
 
-	if !isOwner {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Unauthorized",
-		})
+	// check isAdmin and pass owner check
+	if !isAdmin {
+		if !isOwner {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error": "Unauthorized",
+			})
+		}
 	}
 
 	var req requests.UpdateVenueRequest

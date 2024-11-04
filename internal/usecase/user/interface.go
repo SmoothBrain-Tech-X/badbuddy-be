@@ -28,4 +28,5 @@ type UseCase interface {
 	RefreshToken(ctx context.Context, userID uuid.UUID) (string, error)
 	IsAdmin(ctx context.Context, userID uuid.UUID) (bool, error)
 	GetVenueUserOwn(ctx context.Context, userID uuid.UUID) ([]responses.Venue, error)
+	UpdateRoles(ctx context.Context, adminID uuid.UUID, req requests.UpdateRolesRequest) error
 }

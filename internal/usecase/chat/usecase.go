@@ -233,25 +233,30 @@ func (uc *useCase) GetChats(ctx context.Context, userID uuid.UUID) (*responses.C
 			ID:   c.ID.String(),
 			Type: string(c.Type),
 			SessionID:  func() string { if c.SessionID == nil { return "" } else { return c.SessionID.String() } }(),
-			LastMessage: &responses.ChatMassageResponse{
-				ID:     c.LastMessage.ID.String(),
-				ChatID: c.LastMessage.ChatID.String(),
-				Autor: responses.UserChatResponse{
-					ID:           c.LastMessage.SenderID.String(),
-					Email:        c.LastMessage.Email,
-					FirstName:    c.LastMessage.FirstName,
-					LastName:     c.LastMessage.LastName,
-					Phone:        c.LastMessage.Phone,
-					PlayLevel:    string(c.LastMessage.PlayLevel),
-					Location:     *c.LastMessage.Location,
-					Bio:          *c.LastMessage.Bio,
-					AvatarURL:    *c.LastMessage.AvatarURL,
-					LastActiveAt: c.LastMessage.LastActiveAt,
-				},
-				Message:       c.LastMessage.Content,
-				Timestamp:     c.LastMessage.CreatedAt,
-				EditTimeStamp: c.LastMessage.UpdatedAt,
-			},
+			LastMessage: func() *responses.ChatMassageResponse {
+				if c.LastMessage == nil {
+					return nil
+				}
+				return &responses.ChatMassageResponse{
+					ID:     c.LastMessage.ID.String(),
+					ChatID: c.LastMessage.ChatID.String(),
+					Autor: responses.UserChatResponse{
+						ID:           c.LastMessage.SenderID.String(),
+						Email:        c.LastMessage.Email,
+						FirstName:    c.LastMessage.FirstName,
+						LastName:     c.LastMessage.LastName,
+						Phone:        c.LastMessage.Phone,
+						PlayLevel:    string(c.LastMessage.PlayLevel),
+						Location:     *c.LastMessage.Location,
+						Bio:          *c.LastMessage.Bio,
+						AvatarURL:    *c.LastMessage.AvatarURL,
+						LastActiveAt: c.LastMessage.LastActiveAt,
+					},
+					Message:       c.LastMessage.Content,
+					Timestamp:     c.LastMessage.CreatedAt,
+					EditTimeStamp: c.LastMessage.UpdatedAt,
+				}
+			}(),
 			Users: convertToUserChatResponse(c.Users),
 		})
 	}
@@ -297,6 +302,23 @@ func (uc *useCase) GetDirectChat(ctx context.Context, userID uuid.UUID, otherUse
 
 	return uc.GetChatMessageByID(ctx, chat_id, limit, offset, userID)
 
+}
+
+func (uc *useCase) GetChatMessageOfSession(ctx context.Context, sessionID uuid.UUID, limit int, offset int, userID uuid.UUID) (*responses.ChatMassageListResponse, error) {
+	isPartOfSession, err := uc.chatRepo.IsUserPartOfSession(ctx, userID, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	if !isPartOfSession {
+		return nil, ErrUnauthorized
+	}
+
+	chat_id, err := uc.chatRepo.GetChatIDBySessionID(ctx, sessionID)
+	if err != nil || chat_id == uuid.Nil {
+		return nil, err
+	}
+
+	return uc.GetChatMessageByID(ctx, chat_id, limit, offset, userID)
 }
 
 func convertToUserListResponse(users []models.User) []responses.UserChatResponse {

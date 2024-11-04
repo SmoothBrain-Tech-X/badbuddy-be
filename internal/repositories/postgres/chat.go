@@ -295,7 +295,11 @@ func (r *chatRepository) GetChats(ctx context.Context, userID uuid.UUID) (*[]mod
 			return nil, err
 		}
 
-		chats[i].LastMessage = &lastMessages[0]
+		if len(lastMessages) > 0 {
+			chats[i].LastMessage = &lastMessages[0]
+		} else {
+			chats[i].LastMessage = nil
+		}
 
 	}
 
@@ -399,4 +403,32 @@ func (r *chatRepository) GetDirectChatID(ctx context.Context, userID, otherUserU
 	}
 
 	return chatID, nil
+}
+
+func (r *chatRepository) GetChatIDBySessionID(ctx context.Context, sessionID uuid.UUID) (uuid.UUID, error) {
+	var chatID uuid.UUID
+
+	query := `SELECT id FROM chats WHERE session_id = $1`
+
+	err := r.db.GetContext(ctx, &chatID, query, sessionID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return chatID, nil
+}
+
+func (r *chatRepository) IsUserPartOfSession(ctx context.Context, userID, sessionID uuid.UUID) (bool, error) {
+	var count int
+
+	query := `SELECT COUNT(*) FROM chat_participants WHERE user_id = $1 AND chat_id IN (SELECT id FROM chats WHERE session_id = $2)`
+
+	// query := `SELECT COUNT(*) FROM session_participants WHERE user_id = $1 AND session_id = $2`
+
+	err := r.db.GetContext(ctx, &count, query, userID, sessionID)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
 }
