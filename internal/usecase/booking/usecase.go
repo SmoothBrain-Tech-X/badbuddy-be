@@ -247,14 +247,14 @@ func (uc *useCase) CancelBooking(ctx context.Context, id uuid.UUID, userID uuid.
 		return fmt.Errorf("booking not found: %w", err)
 	}
 
-	user, err := uc.userRepo.GetByID(ctx, userID)
-	if err != nil {
-		return fmt.Errorf("user not found: %w", err)
-	}
+	// user, err := uc.userRepo.GetByID(ctx, userID)
+	// if err != nil {
+	// 	return fmt.Errorf("user not found: %w", err)
+	// }
 
-	if booking.UserID != userID && user.Role != string(models.UserRoleAdmin) {
-		return fmt.Errorf("unauthorized to cancel this booking")
-	}
+	// if booking.UserID != userID && user.Role != string(models.UserRoleAdmin) {
+	// 	return fmt.Errorf("unauthorized to cancel this booking")
+	// }
 
 	if !booking.CanBeCancelled() {
 		return fmt.Errorf("booking cannot be cancelled")
@@ -427,14 +427,14 @@ func (uc *useCase) UpdatePayment(ctx context.Context, id uuid.UUID, userID uuid.
 	if err != nil {
 		return nil, fmt.Errorf("payment not found: %w", err)
 	}
-	user, err := uc.userRepo.GetByID(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("user not found: %w", err)
-	}
+	// user, err := uc.userRepo.GetByID(ctx, userID)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("user not found: %w", err)
+	// }
 
-	if payment.UserID != userID && user.Role != string(models.UserRoleAdmin) {
-		return nil, fmt.Errorf("unauthorized to update this payment")
-	}
+	// if payment.UserID != userID && user.Role != string(models.UserRoleAdmin) {
+	// 	return nil, fmt.Errorf("unauthorized to update this payment")
+	// }
 
 	if payment.Status != models.PaymentStatusPending {
 		return nil, fmt.Errorf("payment already completed")
