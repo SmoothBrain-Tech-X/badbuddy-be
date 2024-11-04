@@ -4,22 +4,23 @@ import (
 	"badbuddy/internal/delivery/dto/requests"
 	"badbuddy/internal/delivery/dto/responses"
 	"badbuddy/internal/delivery/http/middleware"
-	"errors"
 	"badbuddy/internal/usecase/facility"
 	"badbuddy/internal/usecase/user"
+	"errors"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
 
 type FacilityHandler struct {
 	facilityUseCase facility.UseCase
-	userUseCase user.UseCase
+	userUseCase     user.UseCase
 }
 
 func NewFacilityHandler(facilityUseCase facility.UseCase, userUseCase user.UseCase) *FacilityHandler {
 	return &FacilityHandler{
 		facilityUseCase: facilityUseCase,
-		userUseCase: userUseCase,
+		userUseCase:     userUseCase,
 	}
 }
 
@@ -38,16 +39,6 @@ func (h *FacilityHandler) SetupFacilityRoutes(app *fiber.App) {
 }
 
 func (h *FacilityHandler) ListFacilities(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uuid.UUID)
-	isAdmin, err := h.userUseCase.IsAdmin(c.Context(), userID)
-	if err != nil {
-		return h.handleError(c, err)
-	}
-
-	if !isAdmin {
-		return h.handleError(c, facility.ErrUnauthorized)
-
-	}
 	facilities, err := h.facilityUseCase.ListFacilities(c.Context())
 	if err != nil {
 		return h.handleError(c, err)
