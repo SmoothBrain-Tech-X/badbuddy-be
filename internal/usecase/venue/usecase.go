@@ -79,8 +79,8 @@ func (uc *useCase) CreateVenue(ctx context.Context, ownerID uuid.UUID, req reque
 		Facilities:   convertToFacilityResponse(convertToModelFacilities(req.Facilities)),
 		Rules:        convertToRuleResponse(req.Rules),
 		Courts:       []responses.CourtResponse{},
-		Latitude:    venue.Latitude,
-		Longitude:   venue.Longitude,
+		Latitude:     venue.Latitude,
+		Longitude:    venue.Longitude,
 	}, nil
 }
 
@@ -126,8 +126,8 @@ func (uc *useCase) GetVenue(ctx context.Context, id uuid.UUID) (*responses.Venue
 		Courts:       courts,
 		Facilities:   convertToFacilityResponse(venueWithCourts.Facilities),
 		Rules:        rules,
-		Latitude:    venueWithCourts.Latitude,
-		Longitude:   venueWithCourts.Longitude,
+		Latitude:     venueWithCourts.Latitude,
+		Longitude:    venueWithCourts.Longitude,
 	}, nil
 }
 
@@ -250,8 +250,8 @@ func (uc *useCase) SearchVenues(ctx context.Context, query string, limit, offset
 				}
 				return rules
 			}(),
-			Courts: convertToCourtResponse(venue.Courts),
-			Latitude: venue.Latitude,
+			Courts:    convertToCourtResponse(venue.Courts),
+			Latitude:  venue.Latitude,
 			Longitude: venue.Longitude,
 		}
 	}
@@ -442,8 +442,8 @@ func (uc *useCase) GetReviews(ctx context.Context, venueID uuid.UUID, limit, off
 		userMap[user.ID] = user
 	}
 
-	// Build response
 	reviewResponses := make([]responses.ReviewResponse, len(reviews))
+
 	for i, review := range reviews {
 		user, exists := userMap[review.UserID]
 		if !exists {
@@ -521,7 +521,7 @@ func convertToModelFacilities(facilities []requests.Facility) []models.Facility 
 	modelFacilities := make([]models.Facility, len(facilities))
 	for i, facility := range facilities {
 		modelFacilities[i] = models.Facility{
-			ID: uuid.MustParse(facility.ID),
+			ID:   uuid.MustParse(facility.ID),
 			Name: "",
 		}
 	}
@@ -532,7 +532,7 @@ func convertToFacilityResponse(facilities []models.Facility) []responses.Facilit
 	facilityResponses := make([]responses.FacilityResponse, len(facilities))
 	for i, facility := range facilities {
 		facilityResponses[i] = responses.FacilityResponse{
-			ID: facility.ID.String(),
+			ID:   facility.ID.String(),
 			Name: facility.Name,
 		}
 	}
