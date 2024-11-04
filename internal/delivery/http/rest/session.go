@@ -38,6 +38,8 @@ func (h *SessionHandler) SetupSessionRoutes(app *fiber.App) {
 	sessions.Post("/:id/leave", h.LeaveSession)
 	sessions.Post("/:id/cancel", h.CancelSession)
 	sessions.Get("/user/me", h.GetUserSessions)
+	sessions.Put("/:id/status", h.ChangeParticipantStatus)
+	sessions.Get("/:id/participants", h.GetSessionParticipants)
 }
 
 func (h *SessionHandler) CreateSession(c *fiber.Ctx) error {
@@ -113,7 +115,9 @@ func (h *SessionHandler) ListSessions(c *fiber.Ctx) error {
 
 	sessions, err := h.sessionUseCase.ListSessions(c.Context(), filters, limit, offset)
 	if err != nil {
-		return h.handleError(c, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
 	}
 
 	return c.JSON(sessions)
@@ -266,6 +270,56 @@ func (h *SessionHandler) GetUserSessions(c *fiber.Ctx) error {
 
 	return c.JSON(responses.SuccessResponse{
 		Data: sessions,
+	})
+}
+
+func (h *SessionHandler) ChangeParticipantStatus(c *fiber.Ctx) error {
+	sessionID, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(responses.ErrorResponse{
+			Error:       "Invalid session ID",
+			Code:        "INVALID_ID",
+			Description: "The provided session ID is not in a valid format",
+		})
+	}
+
+	var req requests.ChangeParticipantStatusRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(responses.ErrorResponse{
+			Error:       "Invalid request body",
+			Code:        "INVALID_REQUEST",
+			Description: err.Error(),
+		})
+	}
+
+	hostID := c.Locals("userID").(uuid.UUID)
+
+	if err := h.sessionUseCase.ChangeParticipantStatus(c.Context(), sessionID, hostID, req); err != nil {
+		return h.handleError(c, err)
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(responses.SuccessResponse{
+		Message: "Participant status updated successfully",
+	})
+}
+
+func (h *SessionHandler) GetSessionParticipants(c *fiber.Ctx) error {
+	sessionID, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(responses.ErrorResponse{
+			Error:       "Invalid session ID",
+			Code:        "INVALID_ID",
+			Description: "The provided session ID is not in a valid format",
+		})
+	}
+
+	participants, err := h.sessionUseCase.GetSessionParticipants(c.Context(), sessionID)
+	if err != nil {
+		return h.handleError(c, err)
+	}
+
+	return c.JSON(responses.SuccessResponse{
+		Data: participants,
 	})
 }
 

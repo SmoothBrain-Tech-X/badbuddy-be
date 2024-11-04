@@ -35,18 +35,10 @@ type Session struct {
 	CostPerPerson             float64       `db:"cost_per_person"`
 	AllowCancellation         bool          `db:"allow_cancellation"`
 	CancellationDeadlineHours *int          `db:"cancellation_deadline_hours"`
+	IsPublic                  bool          `db:"is_public"`
 	Status                    SessionStatus `db:"status"`
 	CreatedAt                 time.Time     `db:"created_at"`
 	UpdatedAt                 time.Time     `db:"updated_at"`
-	CourtIDs                  []uuid.UUID   `db:"-"` // Used for creating/updating session courts
-}
-
-// SessionCourt represents the association between a session and a court
-type SessionCourt struct {
-	ID        uuid.UUID `db:"id"`
-	SessionID uuid.UUID `db:"session_id"`
-	CourtID   uuid.UUID `db:"court_id"`
-	CreatedAt time.Time `db:"created_at"`
 }
 
 // SessionRule represents a rule for a session
@@ -78,7 +70,6 @@ type SessionDetail struct {
 	HostName         string               `db:"host_name"`
 	HostLevel        PlayerLevel          `db:"host_level"`
 	ConfirmedPlayers int                  `db:"confirmed_players"`
-	Courts           []Court              `db:"courts,omitempty"`
 	Participants     []SessionParticipant `db:"participants,omitempty"`
 	Rules            []SessionRule        `db:"rules,omitempty"`
 	Search_vector    string               `db:"search_vector"`

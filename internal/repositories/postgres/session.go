@@ -26,32 +26,19 @@ func (r *sessionRepository) Create(ctx context.Context, session *models.Session)
 			id, host_id, venue_id, title, description,
 			session_date, start_time, end_time, player_level,
 			max_participants, cost_per_person, allow_cancellation,
-			cancellation_deadline_hours, status,
+			cancellation_deadline_hours, is_public, status,
 			created_at, updated_at
 		) VALUES (
 			:id, :host_id, :venue_id, :title, :description,
 			:session_date, :start_time, :end_time, :player_level,
 			:max_participants, :cost_per_person, :allow_cancellation,
-			:cancellation_deadline_hours, :status,
+			:cancellation_deadline_hours, :is_public, :status,
 			:created_at, :updated_at
 		)`
 
 	_, err := r.db.NamedExecContext(ctx, query, session)
 	if err != nil {
 		return err
-	}
-
-	// If there are selected courts, insert them into session_courts
-	if len(session.CourtIDs) > 0 {
-		for _, courtID := range session.CourtIDs {
-			_, err = r.db.ExecContext(ctx, `
-				INSERT INTO session_courts (id, session_id, court_id, created_at)
-				VALUES ($1, $2, $3, NOW())
-			`, uuid.New(), session.ID, courtID)
-			if err != nil {
-				return err
-			}
-		}
 	}
 
 	return nil
@@ -75,18 +62,6 @@ func (r *sessionRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.
 
 	session := &models.SessionDetail{}
 	err := r.db.GetContext(ctx, session, query, id)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get courts for this session
-	courtsQuery := `
-		SELECT c.*
-		FROM courts c
-		JOIN session_courts sc ON sc.court_id = c.id
-		WHERE sc.session_id = $1`
-
-	err = r.db.SelectContext(ctx, &session.Courts, courtsQuery, id)
 	if err != nil {
 		return nil, err
 	}
@@ -131,6 +106,7 @@ func (r *sessionRepository) Update(ctx context.Context, session *models.Session)
 			cost_per_person = :cost_per_person,
 			allow_cancellation = :allow_cancellation,
 			cancellation_deadline_hours = :cancellation_deadline_hours,
+			is_public = :is_public,
 			status = :status,
 			updated_at = :updated_at
 		WHERE id = :id`
@@ -147,26 +123,6 @@ func (r *sessionRepository) Update(ctx context.Context, session *models.Session)
 
 	if rows == 0 {
 		return fmt.Errorf("session not found")
-	}
-
-	// Update session courts if provided
-	if len(session.CourtIDs) > 0 {
-		// Delete existing courts
-		_, err = r.db.ExecContext(ctx, `DELETE FROM session_courts WHERE session_id = $1`, session.ID)
-		if err != nil {
-			return err
-		}
-
-		// Insert new courts
-		for _, courtID := range session.CourtIDs {
-			_, err = r.db.ExecContext(ctx, `
-				INSERT INTO session_courts (id, session_id, court_id, created_at)
-				VALUES ($1, $2, $3, NOW())
-			`, uuid.New(), session.ID, courtID)
-			if err != nil {
-				return err
-			}
-		}
 	}
 
 	return nil

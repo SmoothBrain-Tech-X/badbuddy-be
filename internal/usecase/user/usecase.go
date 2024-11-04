@@ -119,11 +119,12 @@ func (uc *useCase) generateToken(userID uuid.UUID) (string, error) {
 
 func (uc *useCase) Login(ctx context.Context, req requests.LoginRequest) (*responses.LoginResponse, error) {
 	user, err := uc.userRepo.GetByEmail(ctx, req.Email)
-	
+
 	if err != nil {
 		return nil, ErrInvalidCredentials
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+		fmt.Println(err)
 		return nil, ErrInvalidCredentials
 	}
 
