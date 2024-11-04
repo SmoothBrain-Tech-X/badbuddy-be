@@ -502,7 +502,7 @@ func (uc *useCase) ChangeParticipantStatus(ctx context.Context, sessionID, hostI
 	return nil
 }
 
-func (uc *useCase) GetSessionParticipants(ctx context.Context, sessionID, hostID uuid.UUID) ([]responses.ParticipantResponse, error) {
+func (uc *useCase) GetSessionParticipants(ctx context.Context, sessionID uuid.UUID) ([]responses.ParticipantResponse, error) {
 	participants, err := uc.sessionRepo.GetParticipants(ctx, sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get participants: %w", err)
