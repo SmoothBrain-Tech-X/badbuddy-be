@@ -76,8 +76,6 @@ func (uc *useCase) CreateSession(ctx context.Context, hostID uuid.UUID, req requ
 	for _, schedule := range openRanges {
 		fmt.Println(schedule.Day, schedule.OpenTime, schedule.CloseTime)
 		if strings.EqualFold(schedule.Day, dayOfWeek) {
-			fmt.Println(schedule.Day, schedule.OpenTime, schedule.CloseTime)
-
 			daySchedule = &schedule
 			break
 		}
@@ -90,9 +88,9 @@ func (uc *useCase) CreateSession(ctx context.Context, hostID uuid.UUID, req requ
 	// Validate session time including venue operating hours
 	// for _, openRange := range openRanges {
 
-	if err := uc.validateSessionTime(sessionDate, startTime, endTime, daySchedule.OpenTime, daySchedule.CloseTime); err != nil {
-		return nil, err
-	}
+	// if err := uc.validateSessionTime(sessionDate, startTime, endTime, daySchedule.OpenTime, daySchedule.CloseTime); err != nil {
+	// 	return nil, err
+	// }
 	// }
 
 	// Create session
