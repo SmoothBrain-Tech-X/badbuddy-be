@@ -56,7 +56,7 @@ func (r *chatRepository) GetChatMessageByID(ctx context.Context, chatID uuid.UUI
 			m.chat_id = $1
 			AND m.delete_at IS NULL
 		ORDER BY 
-			m.created_at DESC
+			m.created_at ASC
 		LIMIT $2
 		OFFSET $3`
 
