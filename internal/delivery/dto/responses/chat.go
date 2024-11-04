@@ -2,7 +2,7 @@ package responses
 
 import "time"
 
-type ChatResponse struct {
+type ChatMassageListResponse struct {
 	ChatMassage []ChatMassageResponse `json:"chat_massage"`
 }
 
@@ -18,4 +18,29 @@ type ChatMassageResponse struct {
 type BoardCastMessageResponse struct {
 	MessageaType string `json:"message_type"`
 	Data    interface{} `json:"data,omitempty"`
+}
+
+type ChatListResponse struct {
+	Chats []ChatResponse `json:"chats"`
+}
+
+type ChatResponse struct {
+	ID   string `json:"id"`
+	Type string `json:"type"`
+	LastMessage *ChatMassageResponse `json:"last_message,omitempty"`
+	Users []UserChatResponse `json:"users"`
+}
+
+type UserChatResponse struct {
+	ID           string    `json:"id"`
+	Email        string    `json:"email"`
+	FirstName    string    `json:"first_name"`
+	LastName     string    `json:"last_name"`
+	Phone        string    `json:"phone"`
+	PlayLevel    string    `json:"play_level"`
+	Location     string    `json:"location"`
+	Bio          string    `json:"bio"`
+	PlayHand	 string    `json:"play_hand"`
+	AvatarURL    string    `json:"avatar_url"`
+	LastActiveAt time.Time `json:"last_active_at"`
 }

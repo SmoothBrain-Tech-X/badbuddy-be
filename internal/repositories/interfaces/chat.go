@@ -20,4 +20,5 @@ type ChatRepository interface {
 	UpdateChatMessageReadStatus(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) error
 	GetMessageByID(ctx context.Context, messageID uuid.UUID) (*models.Message, error) // Get a message by ID
 	IsUserIsSender(ctx context.Context, userID, messageID uuid.UUID) (bool, error)
+	GetChats(ctx context.Context, userID uuid.UUID) (*[]models.Chat, error)
 }

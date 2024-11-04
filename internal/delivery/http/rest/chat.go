@@ -34,6 +34,7 @@ func (h *ChatHandler) SetupChatRoutes(app *fiber.App) {
 
 	// Protected routes
 	chat.Use(middleware.AuthRequired())
+	chat.Get("/", h.GetChats)
 	chat.Get("/:chatID/messages", h.GetChatMessage)
 	chat.Post("/:chatID/messages", h.SendMessage)
 	chat.Delete("/:chatID/messages/:messageID", h.DeleteMessage)
@@ -223,5 +224,19 @@ func (h *ChatHandler) UpdateMessage(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(responses.SuccessResponse{
 		Message: "Message updated successfully",
+	})
+}
+
+func (h *ChatHandler) GetChats(c *fiber.Ctx) error {
+	userID := c.Locals("userID").(uuid.UUID)
+
+	chats, err := h.chatUseCase.GetChats(c.Context(), userID)
+	if err != nil {
+		return h.handleError(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(responses.SuccessResponse{
+		Message: "Chats retrieved successfully",
+		Data:    chats,
 	})
 }
