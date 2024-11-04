@@ -70,6 +70,7 @@ type SessionDetail struct {
 	HostName         string               `db:"host_name"`
 	HostLevel        PlayerLevel          `db:"host_level"`
 	ConfirmedPlayers int                  `db:"confirmed_players"`
+	PendingPlayers   int                  `db:"pending_players"`
 	Participants     []SessionParticipant `db:"participants,omitempty"`
 	Rules            []SessionRule        `db:"rules,omitempty"`
 	Search_vector    string               `db:"search_vector"`
