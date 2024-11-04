@@ -261,9 +261,14 @@ func (uc *useCase) SearchVenues(ctx context.Context, query string, limit, offset
 	// 	return responses.VenueResponseDTO{}, fmt.Errorf("failed to count venues: %w", err)
 	// }
 
+	total, err := uc.venueRepo.CountSearch(ctx, query, minPrice, maxPrice, location, facilities)
+	if err != nil {
+		return responses.VenueResponseDTO{}, fmt.Errorf("failed to count venues: %w", err)
+	}
+
 	return responses.VenueResponseDTO{
 		Venues: venueResponses,
-		Total:  len(venues),
+		Total:  total,
 	}, nil
 }
 

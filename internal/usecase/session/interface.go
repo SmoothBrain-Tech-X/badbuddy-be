@@ -19,4 +19,6 @@ type UseCase interface {
 	LeaveSession(ctx context.Context, sessionID, userID uuid.UUID) error
 	CancelSession(ctx context.Context, sessionID, hostID uuid.UUID) error
 	GetUserSessions(ctx context.Context, userID uuid.UUID, includeHistory bool) ([]responses.SessionResponse, error)
+	ChangeParticipantStatus(ctx context.Context, sessionID, hostID uuid.UUID, req requests.ChangeParticipantStatusRequest) error
+	GetSessionParticipants(ctx context.Context, sessionID uuid.UUID) ([]responses.ParticipantResponse, error)
 }

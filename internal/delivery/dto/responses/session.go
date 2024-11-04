@@ -21,7 +21,6 @@ type SessionResponse struct {
 	Description               string                `json:"description"`
 	VenueName                 string                `json:"venue_name"`
 	VenueLocation             string                `json:"venue_location"`
-	Courts                    []CourtResponse       `json:"courts"`
 	HostName                  string                `json:"host_name"`
 	HostLevel                 string                `json:"host_level"`
 	SessionDate               string                `json:"session_date"`
@@ -33,6 +32,7 @@ type SessionResponse struct {
 	Status                    string                `json:"status"`
 	AllowCancellation         bool                  `json:"allow_cancellation"`
 	CancellationDeadlineHours *int                  `json:"cancellation_deadline_hours,omitempty"`
+	IsPublic                  bool                  `json:"is_public"`
 	ConfirmedPlayers          int                   `json:"confirmed_players"`
 	PendingPlayers            int                   `json:"pending_players"`
 	Participants              []ParticipantResponse `json:"participants,omitempty"`

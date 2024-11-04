@@ -8,6 +8,7 @@ import (
 
 type UserStatus string
 type PlayerLevel string
+type UserRole string
 
 const (
 	UserStatusActive   UserStatus = "active"
@@ -16,6 +17,10 @@ const (
 	PlayerLevelBeginner     PlayerLevel = "beginner"
 	PlayerLevelIntermediate PlayerLevel = "intermediate"
 	PlayerLevelAdvanced     PlayerLevel = "advanced"
+
+	UserRoleAdmin UserRole = "admin"
+	UserRoleUser  UserRole = "user"
+	UserRoleVenue UserRole = "venue"
 )
 
 type User struct {
