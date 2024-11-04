@@ -69,6 +69,7 @@ func (h *ChatHandler) GetChatMessage(c *fiber.Ctx) error {
 
 	message_bytes, _ := json.Marshal(responses.BoardCastMessageResponse{
 		MessageaType: "read_all_message",
+		Data:         map[string]interface{}{"user_id": userID},
 	})
 	h.chatHub.GetRoom(chatUUID.String()).Broadcast <- message_bytes
 
@@ -172,7 +173,7 @@ func (h *ChatHandler) DeleteMessage(c *fiber.Ctx) error {
 
 	messageBytes, _ := json.Marshal(responses.BoardCastMessageResponse{
 		MessageaType: "delete_message",
-		Data:         messageID,
+		Data:         map[string]interface{}{"message_id": messageID},
 	})
 	h.chatHub.GetRoom(chatUUID.String()).Broadcast <- messageBytes
 
