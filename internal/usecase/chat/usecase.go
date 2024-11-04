@@ -7,7 +7,6 @@ import (
 	"badbuddy/internal/repositories/interfaces"
 	"context"
 	"errors"
-
 	"github.com/google/uuid"
 )
 
@@ -231,6 +230,7 @@ func (uc *useCase) GetChats(ctx context.Context, userID uuid.UUID) (*responses.C
 		chatList = append(chatList, responses.ChatResponse{
 			ID:   c.ID.String(),
 			Type: string(c.Type),
+			SessionID:  func() string { if c.SessionID == nil { return "" } else { return c.SessionID.String() } }(),
 			LastMessage: &responses.ChatMassageResponse{
 				ID:     c.LastMessage.ID.String(),
 				ChatID: c.LastMessage.ChatID.String(),

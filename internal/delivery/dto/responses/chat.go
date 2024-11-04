@@ -27,7 +27,8 @@ type ChatListResponse struct {
 type ChatResponse struct {
 	ID          string               `json:"id"`
 	Type        string               `json:"type"`
-	LastMessage *ChatMassageResponse `json:"last_message,omitempty"`
+	SessionID   string               `json:"session_id"`
+	LastMessage *ChatMassageResponse `json:"last_message"`
 	Users       []UserChatResponse   `json:"users"`
 }
 
