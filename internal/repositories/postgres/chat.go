@@ -295,7 +295,11 @@ func (r *chatRepository) GetChats(ctx context.Context, userID uuid.UUID) (*[]mod
 			return nil, err
 		}
 
-		chats[i].LastMessage = &lastMessages[0]
+		if len(lastMessages) > 0 {
+			chats[i].LastMessage = &lastMessages[0]
+		} else {
+			chats[i].LastMessage = nil
+		}
 
 	}
 

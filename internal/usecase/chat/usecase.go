@@ -233,25 +233,30 @@ func (uc *useCase) GetChats(ctx context.Context, userID uuid.UUID) (*responses.C
 			ID:   c.ID.String(),
 			Type: string(c.Type),
 			SessionID:  func() string { if c.SessionID == nil { return "" } else { return c.SessionID.String() } }(),
-			LastMessage: &responses.ChatMassageResponse{
-				ID:     c.LastMessage.ID.String(),
-				ChatID: c.LastMessage.ChatID.String(),
-				Autor: responses.UserChatResponse{
-					ID:           c.LastMessage.SenderID.String(),
-					Email:        c.LastMessage.Email,
-					FirstName:    c.LastMessage.FirstName,
-					LastName:     c.LastMessage.LastName,
-					Phone:        c.LastMessage.Phone,
-					PlayLevel:    string(c.LastMessage.PlayLevel),
-					Location:     *c.LastMessage.Location,
-					Bio:          *c.LastMessage.Bio,
-					AvatarURL:    *c.LastMessage.AvatarURL,
-					LastActiveAt: c.LastMessage.LastActiveAt,
-				},
-				Message:       c.LastMessage.Content,
-				Timestamp:     c.LastMessage.CreatedAt,
-				EditTimeStamp: c.LastMessage.UpdatedAt,
-			},
+			LastMessage: func() *responses.ChatMassageResponse {
+				if c.LastMessage == nil {
+					return nil
+				}
+				return &responses.ChatMassageResponse{
+					ID:     c.LastMessage.ID.String(),
+					ChatID: c.LastMessage.ChatID.String(),
+					Autor: responses.UserChatResponse{
+						ID:           c.LastMessage.SenderID.String(),
+						Email:        c.LastMessage.Email,
+						FirstName:    c.LastMessage.FirstName,
+						LastName:     c.LastMessage.LastName,
+						Phone:        c.LastMessage.Phone,
+						PlayLevel:    string(c.LastMessage.PlayLevel),
+						Location:     *c.LastMessage.Location,
+						Bio:          *c.LastMessage.Bio,
+						AvatarURL:    *c.LastMessage.AvatarURL,
+						LastActiveAt: c.LastMessage.LastActiveAt,
+					},
+					Message:       c.LastMessage.Content,
+					Timestamp:     c.LastMessage.CreatedAt,
+					EditTimeStamp: c.LastMessage.UpdatedAt,
+				}
+			}(),
 			Users: convertToUserChatResponse(c.Users),
 		})
 	}
