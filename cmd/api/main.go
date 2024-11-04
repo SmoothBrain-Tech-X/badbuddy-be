@@ -12,12 +12,14 @@ import (
 	"badbuddy/internal/usecase/session"
 	"badbuddy/internal/usecase/user"
 	"badbuddy/internal/usecase/venue"
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"strconv"
 	"time"
 
+	"github.com/go-co-op/gocron"
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
 )
@@ -76,13 +78,13 @@ func main() {
 	sessionHandler := rest.NewSessionHandler(sessionUseCase)
 	sessionHandler.SetupSessionRoutes(app)
 
-
 	bookingRepo := postgres.NewBookingRepository(db)
 	courtRepo := postgres.NewCourtRepository(db)
-	bookingUseCase := booking.NewBookingUseCase(bookingRepo, courtRepo, venueRepo)
+	bookingUseCase := booking.NewBookingUseCase(bookingRepo, courtRepo, venueRepo, userRepo)
 	bookingHandler := rest.NewBookingHandler(bookingUseCase)
 	bookingHandler.SetupBookingRoutes(app)
 
+	cronJob(bookingUseCase)
 	app.Get("/ws/:chat_id", ws.ChatWebSocketHandler(chatHub))
 
 	//add heatlh check and ready check
@@ -124,4 +126,25 @@ func getEnvAsDuration(key string, defaultValue time.Duration) time.Duration {
 		return value
 	}
 	return defaultValue
+}
+
+func cronJob(bookingUseCase booking.UseCase) {
+	cron := gocron.NewScheduler(time.UTC)
+
+	// job 1
+	cron.Every("1m").Do(func() {
+		// ทำงานทุกๆ 5 นาที
+		ctx := context.Background()
+
+		fmt.Println("Running cron job every 1 minute")
+		// Perform the task with context
+		err := bookingUseCase.ChangeCourtStatus(ctx)
+		if err != nil {
+			log.Printf("Error fetching users: %v", err)
+			return
+		}
+
+	})
+
+	cron.StartAsync()
 }

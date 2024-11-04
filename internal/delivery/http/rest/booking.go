@@ -39,6 +39,8 @@ func (h *BookingHandler) SetupBookingRoutes(app *fiber.App) {
 	bookings.Get("/:id/payment", h.GetPayment)
 	bookings.Post("/:id/payment", h.CreatePayment)
 	bookings.Put("/:id/payment", h.UpdatePayment)
+
+	bookings.Post("/test", h.ChangeCourtStatus)
 }
 
 // CreateBooking handles the creation of a new booking
@@ -295,6 +297,20 @@ func (h *BookingHandler) UpdatePayment(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(responses.SuccessResponse{
 		Message: "Payment created successfully",
 		Data:    payment,
+	})
+}
+
+func (h *BookingHandler) ChangeCourtStatus(c *fiber.Ctx) error {
+
+	err := h.bookingUseCase.ChangeCourtStatus(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(responses.SuccessResponse{
+		Message: "Court status changed successfully",
 	})
 }
 

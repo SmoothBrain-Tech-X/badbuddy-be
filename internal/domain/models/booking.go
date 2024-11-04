@@ -153,13 +153,13 @@ func (b *CourtBooking) CanBeCancelled() bool {
 	if b.Status == BookingStatusCancelled || b.Status == BookingStatusConfirmed {
 		return false
 	}
-
+	return true
 	// Check if booking start time is more than 24 hours away
-	now := time.Now()
-	bookingStart := time.Date(
-		b.Date.Year(), b.Date.Month(), b.Date.Day(),
-		b.StartTime.Hour(), b.StartTime.Minute(), 0, 0, time.Local)
-	return now.Add(24 * time.Hour).Before(bookingStart)
+	// now := time.Now()
+	// bookingStart := time.Date(
+	// 	b.Date.Year(), b.Date.Month(), b.Date.Day(),
+	// 	b.StartTime.Hour(), b.StartTime.Minute(), 0, 0, time.Local)
+	// return now.Add(24 * time.Hour).Before(bookingStart)
 }
 
 // IsOverlapping checks if this booking overlaps with another booking

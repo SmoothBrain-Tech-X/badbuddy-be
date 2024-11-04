@@ -107,14 +107,14 @@ func (r *bookingRepository) List(ctx context.Context, userID uuid.UUID, filters 
 		argCount++
 	}
 
-	if date, ok := filters["date"].(time.Time); ok {
-		query += fmt.Sprintf(" AND b.booking_date = $%d", argCount)
+	if date, ok := filters["date"].(string); ok {
+		query += fmt.Sprintf(" AND cb.booking_date = $%d", argCount)
 		args = append(args, date)
 		argCount++
 	}
 
 	if status, ok := filters["status"].(string); ok {
-		query += fmt.Sprintf(" AND b.status = $%d", argCount)
+		query += fmt.Sprintf(" AND cb.status = $%d", argCount)
 		args = append(args, status)
 		argCount++
 	}
@@ -131,8 +131,17 @@ func (r *bookingRepository) List(ctx context.Context, userID uuid.UUID, filters 
 		argCount++
 	}
 
-	query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", argCount, argCount+1)
-	args = append(args, limit, offset)
+	if limit > 0 {
+		query += fmt.Sprintf(" LIMIT $%d", argCount)
+		args = append(args, limit)
+		argCount++
+	}
+
+	if offset > 0 {
+		query += fmt.Sprintf(" OFFSET $%d", argCount)
+		args = append(args, offset)
+		argCount++
+	}
 
 	var bookings []models.CourtBooking
 	err := r.db.SelectContext(ctx, &bookings, query, args...)

@@ -19,17 +19,20 @@ type useCase struct {
 	bookingRepo interfaces.BookingRepository
 	courtRepo   interfaces.CourtRepository
 	venueRepo   interfaces.VenueRepository
+	userRepo    interfaces.UserRepository
 }
 
 func NewBookingUseCase(
 	bookingRepo interfaces.BookingRepository,
 	courtRepo interfaces.CourtRepository,
 	venueRepo interfaces.VenueRepository,
+	userRepo interfaces.UserRepository,
 ) UseCase {
 	return &useCase{
 		bookingRepo: bookingRepo,
 		courtRepo:   courtRepo,
 		venueRepo:   venueRepo,
+		userRepo:    userRepo,
 	}
 }
 
@@ -244,7 +247,12 @@ func (uc *useCase) CancelBooking(ctx context.Context, id uuid.UUID, userID uuid.
 		return fmt.Errorf("booking not found: %w", err)
 	}
 
-	if booking.UserID != userID {
+	user, err := uc.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("user not found: %w", err)
+	}
+
+	if booking.UserID != userID && user.Role != string(models.UserRoleAdmin) {
 		return fmt.Errorf("unauthorized to cancel this booking")
 	}
 
@@ -725,6 +733,73 @@ func (uc *useCase) isVenueOpenForBooking(venue *models.Venue, date time.Time, st
 		fmt.Println("not")
 		return fmt.Errorf("booking must be within venue operating hours (%s - %s)",
 			daySchedule.OpenTime.Format("15:04"), daySchedule.CloseTime.Format("15:04"))
+	}
+
+	return nil
+}
+
+// cronjob for all bookings if time.now in range of date , start time and end time then change court status to occupied if dont have any booking in that time slot status will be available
+func (uc *useCase) ChangeCourtStatus(ctx context.Context) error {
+	filters := make(map[string]interface{})
+	filters["status"] = string(models.BookingStatusConfirmed)
+	filters["date"] = time.Now().Format("2006-01-02")
+
+	// Get all confirmed bookings for today
+	bookings, err := uc.bookingRepo.List(ctx, uuid.Nil, filters, 0, 0)
+	if err != nil {
+		return fmt.Errorf("failed to get all bookings: %w", err)
+	}
+
+	var thailandTZ = time.FixedZone("ICT", 7*3600)
+	currentTime := time.Now().In(thailandTZ)
+
+	// Track courts with active bookings to avoid setting them to available later
+	occupiedCourts := make(map[uuid.UUID]bool)
+
+	for _, booking := range bookings {
+		// Convert booking times to ICT timezone to match currentTime
+		startTime := time.Date(
+			booking.Date.Year(),
+			booking.Date.Month(),
+			booking.Date.Day(),
+			booking.StartTime.Hour(),
+			booking.StartTime.Minute(),
+			0, 0,
+			thailandTZ, // Use ICT timezone
+		)
+
+		endTime := time.Date(
+			booking.Date.Year(),
+			booking.Date.Month(),
+			booking.Date.Day(),
+			booking.EndTime.Hour(),
+			booking.EndTime.Minute(),
+			0, 0,
+			thailandTZ, // Use ICT timezone
+		)
+
+		if currentTime.After(startTime) && currentTime.Before(endTime) {
+			err := uc.courtRepo.UpdateStatus(ctx, booking.CourtID, models.CourtStatusOccupied)
+			if err != nil {
+				return fmt.Errorf("failed to update court status to occupied: %w", err)
+			}
+			occupiedCourts[booking.CourtID] = true
+		}
+	}
+
+	// Set courts without active bookings to available
+	allCourts, err := uc.courtRepo.List(ctx, nil, 0, 0)
+	if err != nil {
+		return fmt.Errorf("failed to list all courts: %w", err)
+	}
+
+	for _, court := range allCourts {
+		if !occupiedCourts[court.ID] {
+			err := uc.courtRepo.UpdateStatus(ctx, court.ID, models.CourtStatusAvailable)
+			if err != nil {
+				return fmt.Errorf("failed to update court status to available: %w", err)
+			}
+		}
 	}
 
 	return nil
