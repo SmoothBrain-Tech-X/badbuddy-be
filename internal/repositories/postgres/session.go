@@ -226,7 +226,8 @@ func (r *sessionRepository) Search(ctx context.Context, searchQuery string, filt
 			v.location as venue_location,
 			u.first_name || ' ' || u.last_name as host_name,
 			u.play_level as host_level,
-			COUNT(sp.id) FILTER (WHERE sp.status = 'confirmed') as confirmed_players
+			COUNT(sp.id) FILTER (WHERE sp.status = 'confirmed') as confirmed_players,
+			COUNT(sp.id) FILTER (WHERE sp.status = 'pending') as pending_players
 		FROM play_sessions ps
 		JOIN venues v ON v.id = ps.venue_id
 		JOIN users u ON u.id = ps.host_id
