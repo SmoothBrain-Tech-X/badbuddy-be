@@ -612,7 +612,7 @@ func (uc *useCase) toSessionResponse(session *models.SessionDetail) *responses.S
 		}
 	}
 
-	confirmedPlayers, pendingPlayers := uc.countParticipantsByStatus(session.Participants)
+	// confirmedPlayers, pendingPlayers := uc.countParticipantsByStatus(session.Participants)
 
 	description := ""
 	if session.Description != nil {
