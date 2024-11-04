@@ -88,15 +88,15 @@ func (uc *useCase) SendMessage(ctx context.Context, userID, chatID uuid.UUID, re
 		return nil, ErrValidation
 	}
 
-	isPartOfChat, err := uc.chatRepo.IsUserPartOfChat(ctx, userID, chatID)
-	if err != nil {
-		return nil, err
-	}
-	if !isPartOfChat {
-		return nil, ErrUnauthorized
-	}
+	// isPartOfChat, err := uc.chatRepo.IsUserPartOfChat(ctx, userID, chatID)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// if !isPartOfChat {
+	// 	return nil, ErrUnauthorized
+	// }
 
-	_, err = uc.chatRepo.GetChatByID(ctx, chatID)
+	_, err := uc.chatRepo.GetChatByID(ctx, chatID)
 	if err != nil {
 		return nil, ErrChatNotFound
 	}
