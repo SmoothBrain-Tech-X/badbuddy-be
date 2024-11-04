@@ -26,6 +26,8 @@ type VenueResponse struct {
 	Courts       []CourtResponse     `json:"courts"`
 	Facilities   []FacilityResponse  `json:"facilities"`
 	Rules        []RuleResponse      `json:"rules"`
+	Latitude     float64             `json:"latitude"`
+	Longitude    float64             `json:"longitude"`
 }
 
 type OpenRangeResponse struct {

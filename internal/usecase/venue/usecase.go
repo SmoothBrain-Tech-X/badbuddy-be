@@ -42,6 +42,8 @@ func (uc *useCase) CreateVenue(ctx context.Context, ownerID uuid.UUID, req reque
 		OwnerID:     ownerID,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
+		Latitude:    req.Latitude,
+		Longitude:   req.Longitude,
 	}
 
 	if err := uc.venueRepo.Create(ctx, venue); err != nil {
@@ -77,6 +79,8 @@ func (uc *useCase) CreateVenue(ctx context.Context, ownerID uuid.UUID, req reque
 		Facilities:   convertToFacilityResponse(convertToModelFacilities(req.Facilities)),
 		Rules:        convertToRuleResponse(req.Rules),
 		Courts:       []responses.CourtResponse{},
+		Latitude:    venue.Latitude,
+		Longitude:   venue.Longitude,
 	}, nil
 }
 
@@ -122,6 +126,8 @@ func (uc *useCase) GetVenue(ctx context.Context, id uuid.UUID) (*responses.Venue
 		Courts:       courts,
 		Facilities:   convertToFacilityResponse(venueWithCourts.Facilities),
 		Rules:        rules,
+		Latitude:    venueWithCourts.Latitude,
+		Longitude:   venueWithCourts.Longitude,
 	}, nil
 }
 
@@ -168,6 +174,8 @@ func (uc *useCase) UpdateVenue(ctx context.Context, id uuid.UUID, req requests.U
 		}
 		venue.Rules.RawMessage = rulesJSON
 	}
+	venue.Latitude = req.Latitude
+	venue.Longitude = req.Longitude
 
 	facilityUUIDs := make([]uuid.UUID, len(req.Facilities))
 	for i, facility := range req.Facilities {
@@ -243,6 +251,8 @@ func (uc *useCase) SearchVenues(ctx context.Context, query string, limit, offset
 				return rules
 			}(),
 			Courts: convertToCourtResponse(venue.Courts),
+			Latitude: venue.Latitude,
+			Longitude: venue.Longitude,
 		}
 	}
 

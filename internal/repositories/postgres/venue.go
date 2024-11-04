@@ -64,6 +64,8 @@ func (r *venueRepository) Create(ctx context.Context, venue *models.Venue) error
 		Search_vector: venue.Search_vector,
 		Rules:         venue.Rules.RawMessage,
 		Facilities:    venue.Facilities,
+		Latitude:      venue.Latitude,
+		Longitude:     venue.Longitude,
 	}
 
 	// If no duplicate, proceed with insert
@@ -71,11 +73,11 @@ func (r *venueRepository) Create(ctx context.Context, venue *models.Venue) error
         INSERT INTO venues (
             id, name, description, address, location, phone, email,
             open_range, image_urls, status, rating,
-            total_reviews, owner_id, created_at, updated_at, rules
+            total_reviews, owner_id, created_at, updated_at, rules, latitude, longitude
         ) VALUES (
             safe_generate_uuid(), :name, :description, :address, :location, :phone, :email,
             :open_range, :image_urls, :status, :rating,
-            :total_reviews, :owner_id, :created_at, :updated_at, :rules
+            :total_reviews, :owner_id, :created_at, :updated_at, :rules, :latitude, :longitude
         )
         RETURNING *
     `
@@ -166,6 +168,8 @@ func (r *venueRepository) Update(ctx context.Context, venue *models.Venue) error
 		"status":      venue.Status,
 		"updated_at":  venue.UpdatedAt,
 		"rules":       venue.Rules.RawMessage,
+		"latitude":    venue.Latitude,
+		"longitude":   venue.Longitude,
 	}
 
 	query := `
@@ -180,7 +184,9 @@ func (r *venueRepository) Update(ctx context.Context, venue *models.Venue) error
 			image_urls = :image_urls,
 			status = :status,
 			updated_at = :updated_at,
-			rules = :rules
+			rules = :rules,
+			latitude = :latitude,
+			longitude = :longitude
 		WHERE id = :id AND deleted_at IS NULL`
 
 	result, err := r.db.NamedExecContext(ctx, query, params)
@@ -316,7 +322,7 @@ func (r *venueRepository) Search(ctx context.Context, query string, limit, offse
 		SELECT 
 			v.id, v.name, v.description, v.address, v.location, v.phone, v.email,
 			v.open_range, v.image_urls, v.status, v.rating, v.total_reviews, v.owner_id,
-			v.created_at, v.updated_at, v.rules,
+			v.created_at, v.updated_at, v.rules, v.latitude, v.longitude,
 			COALESCE(json_agg(
 				json_build_object('id', f.id, 'name', f.name)
 			) FILTER (WHERE f.id IS NOT NULL), '[]') AS facilities,
@@ -386,7 +392,7 @@ func (r *venueRepository) Search(ctx context.Context, query string, limit, offse
 			&venue.ID, &venue.Name, &venue.Description, &venue.Address, &venue.Location,
 			&venue.Phone, &venue.Email, &venue.OpenRange, &venue.ImageURLs,
 			&venue.Status, &venue.Rating, &venue.TotalReviews, &venue.OwnerID,
-			&venue.CreatedAt, &venue.UpdatedAt, &venue.Rules,
+			&venue.CreatedAt, &venue.UpdatedAt, &venue.Rules, &venue.Latitude, &venue.Longitude,
 			&facilitiesJSON, &courtsJSON,
 		)
 		if err != nil {

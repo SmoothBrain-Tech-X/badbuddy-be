@@ -107,6 +107,8 @@ type Venue struct {
 	Rules         NullRawMessage `db:"rules"`
 	Facilities    []Facility     `db:"facilities"`
 	Courts        []Court        `db:"courts"`
+	Latitude      float64        `db:"latitude"`
+	Longitude     float64        `db:"longitude"`
 }
 type VenueInsert struct {
 	ID            uuid.UUID   `db:"id"`
@@ -128,6 +130,8 @@ type VenueInsert struct {
 	Search_vector string      `db:"search_vector"`
 	Rules         []byte      `db:"rules"`
 	Facilities    []Facility  `db:"facilities"`
+	Latitude      float64     `db:"latitude"`
+	Longitude     float64     `db:"longitude"`
 }
 
 type Court struct {

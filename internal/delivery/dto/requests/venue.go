@@ -15,6 +15,8 @@ type CreateVenueRequest struct {
 	ImageURLs   string      `json:"image_urls"`
 	Rules       []Rule      `json:"rules"`
 	Facilities  []Facility  `json:"facilities" validate:"required"`
+	Latitude    float64     `json:"latitude"`
+	Longitude   float64     `json:"longitude"`
 }
 
 type Facility struct {
@@ -44,6 +46,8 @@ type UpdateVenueRequest struct {
 	Status      string      `json:"status"`
 	Rules       []Rule      `json:"rules"`
 	Facilities  []Facility  `json:"facilities"`
+	Latitude    float64     `json:"latitude"`
+	Longitude   float64     `json:"longitude"`
 }
 
 // type CreateCourtRequest struct {
