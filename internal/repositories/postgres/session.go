@@ -51,14 +51,16 @@ func (r *sessionRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.
 			v.name as venue_name,
 			v.location as venue_location,
 			u.first_name || ' ' || u.last_name as host_name,
+			u.gender as host_gender,
 			u.play_level as host_level,
-			COUNT(sp.id) FILTER (WHERE sp.status = 'confirmed') as confirmed_players
+			COUNT(sp.id) FILTER (WHERE sp.status = 'confirmed') as confirmed_players,
+			COUNT(sp.id) FILTER (WHERE sp.status = 'pending') as pending_players
 		FROM play_sessions ps
 		JOIN venues v ON v.id = ps.venue_id
 		JOIN users u ON u.id = ps.host_id
 		LEFT JOIN session_participants sp ON sp.session_id = ps.id
 		WHERE ps.id = $1
-		GROUP BY ps.id, v.name, v.location, u.first_name, u.last_name, u.play_level`
+		GROUP BY ps.id, v.name, v.location, u.first_name, u.last_name, u.play_level, u.gender`
 
 	session := &models.SessionDetail{}
 	err := r.db.GetContext(ctx, session, query, id)
@@ -162,14 +164,16 @@ func (r *sessionRepository) List(ctx context.Context, filters map[string]interfa
 			v.name as venue_name,
 			v.location as venue_location,
 			u.first_name || ' ' || u.last_name as host_name,
+			u.gender as host_gender,
 			u.play_level as host_level,
-			COUNT(sp.id) FILTER (WHERE sp.status = 'confirmed') as confirmed_players
+			COUNT(sp.id) FILTER (WHERE sp.status = 'confirmed') as confirmed_players,
+			COUNT(sp.id) FILTER (WHERE sp.status = 'pending') as pending_players
 		FROM play_sessions ps
 		JOIN venues v ON v.id = ps.venue_id
 		JOIN users u ON u.id = ps.host_id
 		LEFT JOIN session_participants sp ON sp.session_id = ps.id
 		WHERE %s
-		GROUP BY ps.id, v.name, v.location, u.first_name, u.last_name, u.play_level
+		GROUP BY ps.id, v.name, v.location, u.first_name, u.last_name, u.play_level, u.gender
 		ORDER BY ps.session_date ASC, ps.start_time ASC
 		LIMIT $%d OFFSET $%d`,
 		strings.Join(conditions, " AND "),
@@ -329,15 +333,17 @@ func (r *sessionRepository) GetUserSessions(ctx context.Context, userID uuid.UUI
 			v.name as venue_name,
 			v.location as venue_location,
 			u.first_name || ' ' || u.last_name as host_name,
+			u.gender as host_gender,
 			u.play_level as host_level,
-			COUNT(sp2.id) FILTER (WHERE sp2.status = 'confirmed') as confirmed_players
+			COUNT(sp.id) FILTER (WHERE sp.status = 'confirmed') as confirmed_players,
+			COUNT(sp.id) FILTER (WHERE sp.status = 'pending') as pending_players
 		FROM play_sessions ps
 		JOIN venues v ON v.id = ps.venue_id
 		JOIN users u ON u.id = ps.host_id
 		LEFT JOIN session_participants sp ON sp.session_id = ps.id
 		LEFT JOIN session_participants sp2 ON sp2.session_id = ps.id
 		WHERE %s
-		GROUP BY ps.id, v.name, v.location, u.first_name, u.last_name, u.play_level
+		GROUP BY ps.id, v.name, v.location, u.first_name, u.last_name, u.play_level, u.gender
 		ORDER BY ps.session_date DESC, ps.start_time DESC`,
 		strings.Join(conditions, " AND "),
 	)
@@ -361,15 +367,17 @@ func (r *sessionRepository) GetMyJoinedSessions(ctx context.Context, userID uuid
 			v.name as venue_name,
 			v.location as venue_location,
 			u.first_name || ' ' || u.last_name as host_name,
+			u.gender as host_gender,
 			u.play_level as host_level,
-			COUNT(sp2.id) FILTER (WHERE sp2.status = 'confirmed') as confirmed_players
+			COUNT(sp.id) FILTER (WHERE sp.status = 'confirmed') as confirmed_players,
+			COUNT(sp.id) FILTER (WHERE sp.status = 'pending') as pending_players
 		FROM play_sessions ps
 		JOIN venues v ON v.id = ps.venue_id
 		JOIN users u ON u.id = ps.host_id
 		LEFT JOIN session_participants sp ON sp.session_id = ps.id
 		LEFT JOIN session_participants sp2 ON sp2.session_id = ps.id
 		WHERE %s
-		GROUP BY ps.id, v.name, v.location, u.first_name, u.last_name, u.play_level
+		GROUP BY ps.id, v.name, v.location, u.first_name, u.last_name, u.play_level, u.gender
 		ORDER BY ps.session_date DESC, ps.start_time DESC`,
 		strings.Join(conditions, " AND "),
 	)
@@ -394,14 +402,16 @@ func (r *sessionRepository) GetMyHostedSessions(ctx context.Context, userID uuid
 			v.name as venue_name,
 			v.location as venue_location,
 			u.first_name || ' ' || u.last_name as host_name,
+			u.gender as host_gender,
 			u.play_level as host_level,
-			COUNT(sp.id) FILTER (WHERE sp.status = 'confirmed') as confirmed_players
+			COUNT(sp.id) FILTER (WHERE sp.status = 'confirmed') as confirmed_players,
+			COUNT(sp.id) FILTER (WHERE sp.status = 'pending') as pending_players
 		FROM play_sessions ps
 		JOIN venues v ON v.id = ps.venue_id
 		JOIN users u ON u.id = ps.host_id
 		LEFT JOIN session_participants sp ON sp.session_id = ps.id
 		WHERE %s
-		GROUP BY ps.id, v.name, v.location, u.first_name, u.last_name, u.play_level
+		GROUP BY ps.id, v.name, v.location, u.first_name, u.last_name, u.play_level, u.gender
 		ORDER BY ps.session_date DESC, ps.start_time DESC`,
 		strings.Join(conditions, " AND "),
 	)
