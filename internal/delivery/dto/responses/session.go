@@ -24,6 +24,7 @@ type SessionResponse struct {
 	HostID                    string                `json:"host_id"`
 	HostName                  string                `json:"host_name"`
 	HostLevel                 string                `json:"host_level"`
+	HostGender                string                `json:"host_gender"`
 	SessionDate               string                `json:"session_date"`
 	StartTime                 string                `json:"start_time"`
 	EndTime                   string                `json:"end_time"`

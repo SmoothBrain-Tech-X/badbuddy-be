@@ -631,6 +631,7 @@ func (uc *useCase) toSessionResponse(session *models.SessionDetail) *responses.S
 		HostID:                    session.HostID.String(),
 		HostName:                  session.HostName,
 		HostLevel:                 string(session.HostLevel),
+		HostGender:                session.HostGender,
 		SessionDate:               session.SessionDate.Format("2006-01-02"),
 		StartTime:                 session.StartTime.Format("15:04"),
 		EndTime:                   session.EndTime.Format("15:04"),

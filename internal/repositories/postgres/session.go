@@ -225,6 +225,7 @@ func (r *sessionRepository) Search(ctx context.Context, searchQuery string, filt
 			v.name as venue_name,
 			v.location as venue_location,
 			u.first_name || ' ' || u.last_name as host_name,
+			u.gender as host_gender,
 			u.play_level as host_level,
 			COUNT(sp.id) FILTER (WHERE sp.status = 'confirmed') as confirmed_players,
 			COUNT(sp.id) FILTER (WHERE sp.status = 'pending') as pending_players
@@ -233,7 +234,7 @@ func (r *sessionRepository) Search(ctx context.Context, searchQuery string, filt
 		JOIN users u ON u.id = ps.host_id
 		LEFT JOIN session_participants sp ON sp.session_id = ps.id
 		WHERE %s
-		GROUP BY ps.id, v.name, v.location, u.first_name, u.last_name, u.play_level
+		GROUP BY ps.id, v.name, v.location, u.first_name, u.last_name, u.play_level, u.gender
 		ORDER BY 
 			CASE 
 				WHEN ps.search_vector @@ plainto_tsquery('english', $1) 

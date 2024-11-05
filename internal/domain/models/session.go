@@ -68,6 +68,7 @@ type SessionDetail struct {
 	VenueName        string               `db:"venue_name"`
 	VenueLocation    string               `db:"venue_location"`
 	HostName         string               `db:"host_name"`
+	HostGender       string               `db:"host_gender"`
 	HostLevel        PlayerLevel          `db:"host_level"`
 	ConfirmedPlayers int                  `db:"confirmed_players"`
 	PendingPlayers   int                  `db:"pending_players"`
